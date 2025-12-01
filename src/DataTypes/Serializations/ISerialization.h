@@ -203,6 +203,9 @@ public:
             ArrayElements,
             ArraySizes,
 
+            Fsst,
+            FsstOffsets,
+
             StringSizes,
             InlinedStringSizes,
 
