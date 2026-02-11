@@ -110,10 +110,10 @@ void PrettyBlockOutputFormat::calculateWidths(
             {
                 WriteBufferFromString out_serialize(serialized_value);
                 auto serialization = elem.type->getDefaultSerialization();
-                if (column->getName() == std::string("FixedString(FSST)"))
+                /*if (column->getName() == std::string("FixedString(FSST)"))
                 {
                     serialization = std::make_shared<SerializationStringFsst>(std::make_shared<SerializationString>());
-                }
+                }*/
                 serialization->serializeText(*column, j, out_serialize, format_settings);
             }
 
@@ -673,7 +673,7 @@ void PrettyBlockOutputFormat::writeValueWithPadding(
         start_from_offset = 0;
         WriteBufferFromString out_serialize(*serialized_value);
 
-        if (column.getName() == std::string("FixedString(FSST)"))
+        /*if (column.getName() == std::string("FixedString(FSST)"))
         {
             auto temp = std::make_shared<SerializationStringFsst>(std::make_shared<SerializationString>());
             temp->serializeText(column, row_num, out_serialize, format_settings);
@@ -681,7 +681,9 @@ void PrettyBlockOutputFormat::writeValueWithPadding(
         else
         {
             serialization.serializeText(column, row_num, out_serialize, format_settings);
-        }
+        }*/
+        
+        serialization.serializeText(column, row_num, out_serialize, format_settings);
     }
 
     size_t prefix = row_number_width + (style == Style::Space ? 1 : 2);

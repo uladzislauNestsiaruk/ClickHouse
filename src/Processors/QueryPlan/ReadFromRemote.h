@@ -144,7 +144,6 @@ private:
     ConnectionPoolWithFailoverPtr connection_pool_with_failover;
     std::shared_ptr<const QueryPlan> query_plan;
 };
-<<<<<<< HEAD
 
 ASTPtr tryBuildAdditionalFilterAST(
     const ActionsDAG & dag,
@@ -153,6 +152,4 @@ ASTPtr tryBuildAdditionalFilterAST(
     Tables * external_tables,
     ContextMutablePtr & context);
 
-=======
->>>>>>> 20e1b7f70e7 (probably correct fmt)
 }

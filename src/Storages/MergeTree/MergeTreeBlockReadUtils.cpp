@@ -1,3 +1,5 @@
+#include <Columns/ColumnConst.h>
+#include <Core/NamesAndTypes.h>
 #include <DataTypes/DataTypesNumber.h>
 #include <Storages/MergeTree/LoadedMergeTreeDataPartInfoForReader.h>
 #include <Storages/MergeTree/MergeTreeBlockReadUtils.h>
@@ -5,19 +7,14 @@
 #include <Storages/MergeTree/IMergeTreeDataPartInfoForReader.h>
 #include <Storages/MergeTree/MergeTreeRangeReader.h>
 #include <Storages/MergeTree/MergeTreeDataSelectExecutor.h>
+#include <Storages/MergeTree/MergeTreeIndexConditionText.h>
+#include <Storages/MergeTree/MergeTreeReaderTextIndex.h>
+#include <Storages/MergeTree/MergeTreeSelectProcessor.h>
+#include <Storages/MergeTree/MergeTreeVirtualColumns.h>
 #include <Storages/MergeTree/PatchParts/PatchPartInfo.h>
-#include <DataTypes/NestedUtils.h>
-#include <Core/NamesAndTypes.h>
 #include <Common/checkStackSize.h>
 #include <Common/FailPoint.h>
 #include <Common/typeid_cast.h>
-#include <Storages/MergeTree/MergeTreeVirtualColumns.h>
-#include <Storages/MergeTree/MergeTreeSelectProcessor.h>
-#include <Storages/MergeTree/MergeTreeIndexConditionText.h>
-#include <Columns/ColumnConst.h>
-#include <IO/WriteBufferFromString.h>
-#include <IO/Operators.h>
-#include <Interpreters/ExpressionActions.h>
 
 #include <algorithm>
 #include <unordered_set>
@@ -28,8 +25,8 @@ namespace DB
 
 namespace ErrorCodes
 {
-    extern const int LOGICAL_ERROR;
-    extern const int NO_SUCH_COLUMN_IN_TABLE;
+extern const int LOGICAL_ERROR;
+extern const int NO_SUCH_COLUMN_IN_TABLE;
 }
 
 namespace FailPoints
@@ -136,8 +133,14 @@ bool injectRequiredColumnsRecursively(
     bool result = false;
     for (const auto & identifier : identifiers)
         result |= injectRequiredColumnsRecursively(
-            identifier, storage_snapshot, alter_conversions, data_part_info_for_reader,
-            options, columns, required_columns, injected_columns);
+            identifier,
+            storage_snapshot,
+            alter_conversions,
+            data_part_info_for_reader,
+            options,
+            columns,
+            required_columns,
+            injected_columns);
 
     return result;
 }
@@ -163,9 +166,7 @@ NameSet injectRequiredColumns(
     if (!data_part_info_for_reader.isProjectionPart())
         alter_conversions = data_part_info_for_reader.getAlterConversions();
 
-    auto options = GetColumnsOptions(GetColumnsOptions::AllPhysical)
-        .withVirtuals()
-        .withSubcolumns(with_subcolumns);
+    auto options = GetColumnsOptions(GetColumnsOptions::AllPhysical).withVirtuals().withSubcolumns(with_subcolumns);
 
     for (size_t i = 0; i < columns.size(); ++i)
     {
@@ -299,9 +300,12 @@ void MergeTreeBlockSizePredictor::startBlock()
 void MergeTreeBlockSizePredictor::update(const Block & sample_block, const Columns & columns, size_t num_rows, double decay)
 {
     if (columns.size() != sample_block.columns())
-        throw Exception(ErrorCodes::LOGICAL_ERROR, "Inconsistent number of columns passed to MergeTreeBlockSizePredictor. "
-                        "Have {} in sample block and {} columns in list",
-                        toString(sample_block.columns()), toString(columns.size()));
+        throw Exception(
+            ErrorCodes::LOGICAL_ERROR,
+            "Inconsistent number of columns passed to MergeTreeBlockSizePredictor. "
+            "Have {} in sample block and {} columns in list",
+            toString(sample_block.columns()),
+            toString(columns.size()));
 
     if (!is_initialized_in_update)
     {
@@ -312,8 +316,7 @@ void MergeTreeBlockSizePredictor::update(const Block & sample_block, const Colum
 
     if (num_rows < block_size_rows)
     {
-        throw Exception(ErrorCodes::LOGICAL_ERROR, "Updated block has less rows ({}) than previous one ({})",
-                        num_rows, block_size_rows);
+        throw Exception(ErrorCodes::LOGICAL_ERROR, "Updated block has less rows ({}) than previous one ({})", num_rows, block_size_rows);
     }
 
     size_t diff_rows = num_rows - block_size_rows;
@@ -352,8 +355,7 @@ void MergeTreeBlockSizePredictor::update(const Block & sample_block, const Colum
 
 PrewhereExprStepPtr createLightweightDeleteStep(bool remove_filter_column)
 {
-    PrewhereExprStep step
-    {
+    PrewhereExprStep step{
         .type = PrewhereExprStep::Filter,
         .actions = nullptr,
         .filter_column_name = RowExistsColumn::name,
@@ -459,9 +461,7 @@ MergeTreeReadTaskColumns getReadTaskColumns(
     /// Inject columns required for defaults evaluation
     injectRequiredColumns(data_part_info_for_reader, storage_snapshot, with_subcolumns, column_to_read_after_prewhere);
 
-    auto options = GetColumnsOptions(GetColumnsOptions::All)
-        .withVirtuals()
-        .withSubcolumns(with_subcolumns);
+    auto options = GetColumnsOptions(GetColumnsOptions::All).withVirtuals().withSubcolumns(with_subcolumns);
 
     auto add_step = [&](const PrewhereExprStep & step)
     {
@@ -492,9 +492,7 @@ MergeTreeReadTaskColumns getReadTaskColumns(
         /// because we cannot determine the correct size of the last granule without reading data.
         if (!step_column_names.empty() || !has_adaptive_granularity)
         {
-            injectRequiredColumns(
-                data_part_info_for_reader, storage_snapshot,
-                with_subcolumns, step_column_names);
+            injectRequiredColumns(data_part_info_for_reader, storage_snapshot, with_subcolumns, step_column_names);
         }
 
         /// More columns could have been added, filter them as well by the list of columns from previous steps.
@@ -554,12 +552,12 @@ MergeTreeReadTaskColumns getReadTaskColumnsForMerge(
         data_part_info_for_reader,
         storage_snapshot,
         required_columns,
-        /*row_level_filter=*/ nullptr,
-        /*prewhere_info=*/ nullptr,
+        /*row_level_filter=*/nullptr,
+        /*prewhere_info=*/nullptr,
         mutation_steps,
         /*index_read_tasks*/ {},
-        /*actions_settings=*/ {},
-        /*reader_settings=*/ MergeTreeReaderSettings::createFromSettings(),
+        /*actions_settings=*/{},
+        /*reader_settings=*/MergeTreeReaderSettings::createFromSettings(),
         storage_snapshot->storage.supportsSubcolumns());
 }
 
