@@ -16,7 +16,7 @@
 #include <Common/assert_cast.h>
 
 #ifdef __SSE2__
-#    include <emmintrin.h>
+    #include <emmintrin.h>
 #endif
 
 
@@ -25,9 +25,9 @@ namespace DB
 
 namespace ErrorCodes
 {
-extern const int INCORRECT_DATA;
-extern const int LOGICAL_ERROR;
-extern const int TOO_LARGE_STRING_SIZE;
+    extern const int INCORRECT_DATA;
+    extern const int LOGICAL_ERROR;
+    extern const int TOO_LARGE_STRING_SIZE;
 }
 
 UInt128 SerializationString::getHash(MergeTreeStringSerializationVersion version_)
@@ -117,7 +117,7 @@ void SerializationString::deserializeBinary(IColumn & column, ReadBuffer & istr,
     try
     {
         data.resize(offset);
-        istr.readStrict(reinterpret_cast<char *>(&data[offset - size]), size);
+        istr.readStrict(reinterpret_cast<char*>(&data[offset - size]), size);
     }
     catch (...)
     {
@@ -138,7 +138,9 @@ void SerializationString::serializeBinaryBulk(const IColumn & column, WriteBuffe
     if (!size)
         return;
 
-    size_t end = limit && offset + limit < size ? offset + limit : size;
+    size_t end = limit && offset + limit < size
+        ? offset + limit
+        : size;
 
     ColumnString::Offset prev_string_offset = offsets[offset - 1];
     for (size_t i = offset; i < end; ++i)
@@ -167,9 +169,13 @@ try
         UInt64 size;
         readVarUInt(size, istr);
 
-        static constexpr size_t max_string_size = 16_GiB; /// Arbitrary value to prevent logical errors and overflows, but large enough.
+        static constexpr size_t max_string_size = 16_GiB;   /// Arbitrary value to prevent logical errors and overflows, but large enough.
         if (size > max_string_size)
-            throw Exception(ErrorCodes::TOO_LARGE_STRING_SIZE, "Too large string size: {}. The maximum is: {}.", size, max_string_size);
+            throw Exception(
+                ErrorCodes::TOO_LARGE_STRING_SIZE,
+                "Too large string size: {}. The maximum is: {}.",
+                size,
+                max_string_size);
 
         offset += size;
         if (unlikely(offset > data.size()))
@@ -196,7 +202,7 @@ try
             }
             else
             {
-                istr.readStrict(reinterpret_cast<char *>(&data[offset - size]), size);
+                istr.readStrict(reinterpret_cast<char*>(&data[offset - size]), size);
             }
         }
 
@@ -213,8 +219,7 @@ catch (...)
 }
 
 
-void SerializationString::deserializeBinaryBulk(
-    IColumn & column, ReadBuffer & istr, size_t rows_offset, size_t limit, double avg_value_size_hint) const
+void SerializationString::deserializeBinaryBulk(IColumn & column, ReadBuffer & istr, size_t rows_offset, size_t limit, double avg_value_size_hint) const
 {
     /// Skip certain number of values if requested
     for (size_t i = 0; i < rows_offset; ++i)
@@ -249,7 +254,8 @@ void SerializationString::deserializeBinaryBulk(
         catch (Exception & e)
         {
             e.addMessage(
-                "(avg_value_size_hint = " + toString(avg_value_size_hint) + ", avg_chars_size = " + toString(avg_chars_size)
+                "(avg_value_size_hint = " + toString(avg_value_size_hint)
+                + ", avg_chars_size = " + toString(avg_chars_size)
                 + ", limit = " + toString(limit) + ")");
             throw;
         }
@@ -282,7 +288,11 @@ void SerializationString::enumerateStreams(
 }
 
 void SerializationString::serializeBinaryBulkWithMultipleStreams(
-    const IColumn & column, size_t offset, size_t limit, SerializeBinaryBulkSettings & settings, SerializeBinaryBulkStatePtr & state) const
+    const IColumn & column,
+    size_t offset,
+    size_t limit,
+    SerializeBinaryBulkSettings & settings,
+    SerializeBinaryBulkStatePtr & state) const
 {
     switch (version)
     {
@@ -315,7 +325,9 @@ void SerializationString::deserializeBinaryBulkWithMultipleStreams(
 }
 
 void SerializationString::enumerateStreamsWithoutSize(
-    EnumerateStreamsSettings & settings, const StreamCallback & callback, const SubstreamData & data) const
+    EnumerateStreamsSettings & settings,
+    const StreamCallback & callback,
+    const SubstreamData & data) const
 {
     if (settings.enumerate_virtual_streams)
     {
@@ -433,39 +445,23 @@ void SerializationString::deserializeWholeText(IColumn & column, ReadBuffer & is
 
 bool SerializationString::tryDeserializeWholeText(IColumn & column, ReadBuffer & istr, const FormatSettings &) const
 {
-    return read<bool>(
-        column,
-        [&](ColumnString::Chars & data)
-        {
-            readStringUntilEOFInto(data, istr);
-            return true;
-        });
+    return read<bool>(column, [&](ColumnString::Chars & data) { readStringUntilEOFInto(data, istr); return true; });
 }
 
 void SerializationString::deserializeTextEscaped(IColumn & column, ReadBuffer & istr, const FormatSettings & settings) const
 {
-    read<void>(
-        column,
-        [&](ColumnString::Chars & data)
-        {
-            settings.tsv.crlf_end_of_line_input ? readEscapedStringInto<PaddedPODArray<UInt8>, true>(data, istr)
-                                                : readEscapedStringInto<PaddedPODArray<UInt8>, false>(data, istr);
-        });
+    read<void>(column, [&](ColumnString::Chars & data)
+    {
+        settings.tsv.crlf_end_of_line_input ? readEscapedStringInto<PaddedPODArray<UInt8>,true>(data, istr) : readEscapedStringInto<PaddedPODArray<UInt8>,false>(data, istr);
+    });
 }
 
 bool SerializationString::tryDeserializeTextEscaped(IColumn & column, ReadBuffer & istr, const FormatSettings &) const
 {
-    return read<bool>(
-        column,
-        [&](ColumnString::Chars & data)
-        {
-            readEscapedStringInto<PaddedPODArray<UInt8>, true>(data, istr);
-            return true;
-        });
+    return read<bool>(column, [&](ColumnString::Chars & data) { readEscapedStringInto<PaddedPODArray<UInt8>,true>(data, istr); return true; });
 }
 
-void SerializationString::serializeTextQuoted(
-    const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
+void SerializationString::serializeTextQuoted(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
 {
     if (settings.values.escape_quote_with_quote)
         writeQuotedStringPostgreSQL(assert_cast<const ColumnString &>(column).getDataAt(row_num), ostr);
@@ -485,8 +481,7 @@ bool SerializationString::tryDeserializeTextQuoted(IColumn & column, ReadBuffer 
 }
 
 
-void SerializationString::serializeTextJSON(
-    const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
+void SerializationString::serializeTextJSON(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
 {
     writeJSONString(assert_cast<const ColumnString &>(column).getDataAt(row_num), ostr, settings);
 }
@@ -536,8 +531,7 @@ void SerializationString::deserializeTextJSON(IColumn & column, ReadBuffer & ist
 bool SerializationString::tryDeserializeTextJSON(IColumn & column, ReadBuffer & istr, const FormatSettings & settings) const
 {
     if (settings.json.read_objects_as_strings && !istr.eof() && *istr.position() == '{')
-        return read<bool>(
-            column, [&](ColumnString::Chars & data) { return readJSONObjectPossiblyInvalid<ColumnString::Chars, bool>(data, istr); });
+        return read<bool>(column, [&](ColumnString::Chars & data) { return readJSONObjectPossiblyInvalid<ColumnString::Chars, bool>(data, istr); });
 
     if (settings.json.read_arrays_as_strings && !istr.eof() && *istr.position() == '[')
         return read<bool>(column, [&](ColumnString::Chars & data) { return readJSONArrayInto<ColumnString::Chars, bool>(data, istr); });
@@ -602,22 +596,14 @@ void SerializationString::deserializeTextCSV(IColumn & column, ReadBuffer & istr
 
 bool SerializationString::tryDeserializeTextCSV(IColumn & column, ReadBuffer & istr, const FormatSettings & settings) const
 {
-    return read<bool>(
-        column,
-        [&](ColumnString::Chars & data)
-        {
-            readCSVStringInto<ColumnString::Chars, false, false>(data, istr, settings.csv);
-            return true;
-        });
+    return read<bool>(column, [&](ColumnString::Chars & data) { readCSVStringInto<ColumnString::Chars, false, false>(data, istr, settings.csv); return true; });
 }
 
 void SerializationString::serializeTextMarkdown(
     const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
 {
     if (settings.markdown.escape_special_characters)
-    {
         writeMarkdownEscapedString(assert_cast<const ColumnString &>(column).getDataAt(row_num), ostr);
-    }
     else
         serializeTextEscaped(column, row_num, ostr, settings);
 }
@@ -684,7 +670,9 @@ void appendStringSizesToColumnStringOffsets(ColumnString & column_string, const 
 }
 
 void SerializationString::enumerateStreamsWithSize(
-    EnumerateStreamsSettings & settings, const StreamCallback & callback, const SubstreamData & data) const
+    EnumerateStreamsSettings & settings,
+    const StreamCallback & callback,
+    const SubstreamData & data) const
 {
     const auto * type_string = data.type ? &assert_cast<const DataTypeString &>(*data.type) : nullptr;
 
@@ -865,7 +853,7 @@ void SerializationString::deserializeBinaryBulkWithSizeStream(
     size_t initial_size = data.size();
     data.resize(initial_size + bytes_to_read);
     stream->ignore(bytes_to_skip);
-    size_t size = stream->readBig(reinterpret_cast<char *>(&data[initial_size]), bytes_to_read);
+    size_t size = stream->readBig(reinterpret_cast<char*>(&data[initial_size]), bytes_to_read);
     data.resize(initial_size + size);
     column = std::move(mutable_column);
     addColumnWithNumReadRowsToSubstreamsCache(cache, settings.path, column, num_read_rows);
