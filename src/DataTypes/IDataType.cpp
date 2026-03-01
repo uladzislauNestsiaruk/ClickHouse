@@ -29,10 +29,10 @@ namespace DB
 
 namespace ErrorCodes
 {
-    extern const int LOGICAL_ERROR;
-    extern const int DATA_TYPE_CANNOT_BE_PROMOTED;
-    extern const int ILLEGAL_COLUMN;
-    extern const int NOT_IMPLEMENTED;
+extern const int LOGICAL_ERROR;
+extern const int DATA_TYPE_CANNOT_BE_PROMOTED;
+extern const int ILLEGAL_COLUMN;
+extern const int NOT_IMPLEMENTED;
 }
 
 IDataType::IDataType() = default;
@@ -99,7 +99,11 @@ MutableColumnPtr IDataType::createColumn(const ISerialization & serialization) c
         if (kind == ISerialization::Kind::SPARSE)
             column = ColumnSparse::create(std::move(column));
         else if (kind == ISerialization::Kind::FSST)
+        {
+#ifdef ENABLE_FSST
             column = ColumnFSST::create(std::move(column))->assumeMutable();
+#endif
+        }
         else if (kind == ISerialization::Kind::REPLICATED)
             column = ColumnReplicated::create(std::move(column), ColumnUInt8::create());
     }
@@ -155,11 +159,8 @@ void IDataType::forEachSubcolumn(const SubcolumnCallback & callback, const Subst
     data.serialization->enumerateStreams(settings, callback_with_data, data);
 }
 
-std::unique_ptr<IDataType::SubstreamData> IDataType::getSubcolumnData(
-    std::string_view subcolumn_name,
-    const SubstreamData & data,
-    size_t initial_array_level,
-    bool throw_if_null)
+std::unique_ptr<IDataType::SubstreamData>
+IDataType::getSubcolumnData(std::string_view subcolumn_name, const SubstreamData & data, size_t initial_array_level, bool throw_if_null)
 {
     std::unique_ptr<IDataType::SubstreamData> res;
 
@@ -227,10 +228,7 @@ std::unique_ptr<IDataType::SubstreamData> IDataType::getSubcolumnData(
 }
 
 std::unique_ptr<IDataType::SubstreamData> IDataType::getDynamicSubcolumnData(
-    std::string_view /*subcolumn_name*/,
-    const SubstreamData & /*data*/,
-    size_t /*initial_array_level*/,
-    bool throw_if_null) const
+    std::string_view /*subcolumn_name*/, const SubstreamData & /*data*/, size_t /*initial_array_level*/, bool throw_if_null) const
 {
     if (throw_if_null)
         throw Exception(ErrorCodes::NOT_IMPLEMENTED, "Method getDynamicSubcolumnData is not implemented for type {}", getName());
@@ -342,14 +340,19 @@ SerializationPtr IDataType::getDefaultSerialization() const
     return doGetSerialization(SerializationInfoSettings{});
 }
 
-SerializationPtr IDataType::wrapSerializationBasedOnKindStack(SerializationPtr serialization, const ISerialization::KindStack & kind_stack, const SerializationInfoSettings & settings) const
+SerializationPtr IDataType::wrapSerializationBasedOnKindStack(
+    SerializationPtr serialization, const ISerialization::KindStack & kind_stack, const SerializationInfoSettings & settings) const
 {
     for (auto kind : kind_stack)
     {
         if (settings.canUseSparseSerialization(*this) && kind == ISerialization::Kind::SPARSE)
             serialization = SerializationSparse::create(serialization);
         else if (kind == ISerialization::Kind::FSST)
+        {
+#ifdef ENABLE_FSST
             serialization = std::make_shared<SerializationStringFSST>(serialization);
+#endif
+        }
         else if (kind == ISerialization::Kind::DETACHED)
             serialization = SerializationDetached::create(serialization);
         else if (kind == ISerialization::Kind::REPLICATED)
@@ -495,11 +498,23 @@ SerializationPtr IDataType::getSerialization(const NameAndTypePair & column)
         return WhichDataType(data_type).isNativeInteger(); \
     } \
 \
-bool isDecimal(TYPE data_type) { return WhichDataType(data_type).isDecimal(); } \
-bool isDecimal64(TYPE data_type) { return WhichDataType(data_type).isDecimal64(); } \
+    bool isDecimal(TYPE data_type) \
+    { \
+        return WhichDataType(data_type).isDecimal(); \
+    } \
+    bool isDecimal64(TYPE data_type) \
+    { \
+        return WhichDataType(data_type).isDecimal64(); \
+    } \
 \
-bool isFloat(TYPE data_type) { return WhichDataType(data_type).isFloat(); } \
-bool isNativeFloat(TYPE data_type) { return WhichDataType(data_type).isNativeFloat(); } \
+    bool isFloat(TYPE data_type) \
+    { \
+        return WhichDataType(data_type).isFloat(); \
+    } \
+    bool isNativeFloat(TYPE data_type) \
+    { \
+        return WhichDataType(data_type).isNativeFloat(); \
+    } \
 \
     bool isIntegerOrDecimal(TYPE data_type) \
     { \
