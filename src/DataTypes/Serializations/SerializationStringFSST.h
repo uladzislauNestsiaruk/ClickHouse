@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef ENABLE_FSST
+// #ifdef ENABLE_FSST
 
 #include <memory>
 
@@ -118,8 +118,6 @@ public:
     }
 
 private:
-    template <bool compressed>
-    void serializeState(SerializeBinaryBulkSettings & settings, SerializeFSSTState<compressed> & state) const;
     size_t deserializeState(DeserializeBinaryBulkSettings & settings, DeserializeBinaryBulkStatePtr & state) const;
 
     void serializeBinaryBulkWithMultipleStreams(
@@ -155,4 +153,4 @@ private:
 };
 }
 
-#endif
+// #endif

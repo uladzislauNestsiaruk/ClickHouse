@@ -1,28 +1,28 @@
 #pragma once
 
-#ifdef ENABLE_FSST
+// #ifdef ENABLE_FSST
 
-#    include <cstddef>
-#    include <memory>
-#    include <vector>
+#include <cstddef>
+#include <memory>
+#include <vector>
 
-#    include <Columns/ColumnString.h>
-#    include <Columns/IColumn.h>
-#    include <Columns/IColumn_fwd.h>
-#    include <DataTypes/Serializations/SerializationStringFSST.h>
-#    include <base/types.h>
-#    include <Common/COW.h>
-#    include <Common/PODArray.h>
-#    include <Common/WeakHash.h>
+#include <Columns/ColumnString.h>
+#include <Columns/IColumn.h>
+#include <Columns/IColumn_fwd.h>
+#include <DataTypes/Serializations/SerializationStringFSST.h>
+#include <base/types.h>
+#include <Common/COW.h>
+#include <Common/PODArray.h>
+#include <Common/WeakHash.h>
 
 
-#    pragma GCC diagnostic ignored "-Wunused-parameter"
-#    pragma GCC diagnostic ignored "-Wold-style-cast"
-#    pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#    pragma GCC diagnostic ignored "-Wcast-align"
-#    pragma GCC diagnostic ignored "-Wcast-qual"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#pragma GCC diagnostic ignored "-Wcast-align"
+#pragma GCC diagnostic ignored "-Wcast-qual"
 
-#    include <fsst.h>
+#include </Users/uladzislaunestsiaruk/Projects/Clickhouse_temp/ClickHouse/contrib/fsst/fsst.h>
 
 namespace DB
 {
@@ -86,14 +86,16 @@ public:
     {
     }
 
-    std::string getName() const override { return "FixedString(FSST)"; }
-    const char * getFamilyName() const override { return "FixedString"; }
-    TypeIndex getDataType() const override { return TypeIndex::FixedString; }
+    std::string getName() const override { return fmt::format("{}(FSST)", string_column->getName()); }
+    const char * getFamilyName() const override { return string_column->getFamilyName(); }
+    TypeIndex getDataType() const override { return string_column->getDataType(); }
 
     [[nodiscard]] size_t size() const override { return string_column->size(); }
 
     [[nodiscard]] Field operator[](size_t n) const override;
     void get(size_t n, Field & res) const override;
+
+    ColumnPtr convertToFullIfNeeded() const override;
 
     void getValueNameImpl(WriteBufferFromOwnString & name_buf, size_t n, const Options & options) const override
     {
@@ -200,4 +202,4 @@ ColumnPtr recursiveRemoveFSST(const ColumnPtr & column);
 
 };
 
-#endif
+// #endif

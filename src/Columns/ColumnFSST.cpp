@@ -1,22 +1,24 @@
+#include <Common/Logger.h>
 #ifdef ENABLE_FSST
 
-#include <algorithm>
-#include <cassert>
-#include <memory>
-#include <optional>
-#include <utility>
-#include <vector>
+#    include <algorithm>
+#    include <cassert>
+#    include <memory>
+#    include <optional>
+#    include <utility>
+#    include <vector>
 
-#include <Columns/ColumnFSST.h>
-#include <Columns/ColumnTuple.h>
-#include <Columns/ColumnsCommon.h>
-#include <Core/Field.h>
-#include <base/types.h>
-#include <Common/Exception.h>
-#include <Common/assert_cast.h>
+#    include <Columns/ColumnFSST.h>
+#    include <Columns/ColumnTuple.h>
+#    include <Columns/ColumnsCommon.h>
+#    include <Core/Field.h>
+#    include <base/types.h>
+#    include <Common/Exception.h>
+#    include <Common/assert_cast.h>
+#    include <Common/logger_useful.h>
 
 
-#include <fsst.h>
+#    include <fsst.h>
 
 namespace DB
 {
@@ -52,10 +54,7 @@ void ColumnFSST::decompressRow(size_t row_num, String & out) const
     auto compressed_data = string_column->getDataAt(row_num);
     const auto & batch_dsc = decoders[batch_ind.value()];
 
-    if (out.capacity() < origin_lengths[row_num])
-    {
-        out.reserve(origin_lengths[row_num]);
-    }
+    out.resize(origin_lengths[row_num]);
 
     fsst_decompress(
         reinterpret_cast<::fsst_decoder_t *>(batch_dsc.decoder.get()),
@@ -75,6 +74,7 @@ Field ColumnFSST::operator[](size_t n) const
 
 void ColumnFSST::get(size_t n, Field & res) const
 {
+    LOG_DEBUG(getLogger("fsst logger"), "get on row {}", n);
     String uncompressed_string(origin_lengths[n], ' ');
     decompressRow(n, uncompressed_string);
     res = std::move(uncompressed_string);
@@ -104,6 +104,17 @@ void ColumnFSST::popBack(size_t n)
     }
 }
 
+ColumnPtr ColumnFSST::convertToFullIfNeeded() const {
+    auto column_string = ColumnString::create();
+    for (size_t ind = 0; ind < size(); ind++) {
+        String val;
+        decompressRow(ind, val);
+        column_string->insertData(val.data(), val.size());
+    }
+
+    return column_string;
+}
+
 void ColumnFSST::doInsertRangeFrom(const IColumn & src, size_t start, size_t length)
 {
     const auto * src_fsst = assert_cast<const ColumnFSST *>(&src);
@@ -114,7 +125,8 @@ void ColumnFSST::doInsertRangeFrom(const IColumn & src, size_t start, size_t len
 
     size_t length_before_insert = string_column->size();
     string_column->insertRangeFrom(*src_fsst->string_column, start, length);
-    origin_lengths.insert(origin_lengths.end(), src_fsst->origin_lengths.begin() + start, src_fsst->origin_lengths.begin() + length);
+    origin_lengths.insert(
+        origin_lengths.end(), src_fsst->origin_lengths.begin() + start, src_fsst->origin_lengths.begin() + start + length);
 
     auto first_batch_to_insert = src_fsst->batchByRow(start).value();
     while (first_batch_to_insert < src_fsst->decoders.size()
@@ -133,15 +145,15 @@ void ColumnFSST::doInsertRangeFrom(const IColumn & src, size_t start, size_t len
 */
 int ColumnFSST::doCompareAt(size_t n, size_t m, const IColumn & rhs, int /* nan_direction_hint */) const
 {
-    const auto * rhs_fsst = assert_cast<const ColumnFSST *>(&rhs);
+    LOG_DEBUG(getLogger("fsst logger"), "cmp call fsst, n = {}, m = {}", n, m);
 
     String lhs_val;
-    String rhs_val;
+    Field rhs_val;
 
+    rhs.get(m, rhs_val);
     decompressRow(n, lhs_val);
-    rhs_fsst->decompressRow(m, rhs_val);
 
-    return memcmpSmallAllowOverflow15(lhs_val.data(), lhs_val.size(), rhs_val.data(), rhs_val.size());
+    return memcmpSmallAllowOverflow15(lhs_val.data(), lhs_val.size(), rhs_val.dump().data(), rhs_val.dump().size());
 }
 
 size_t ColumnFSST::byteSize() const
