@@ -45,10 +45,7 @@ public:
     {
         nested->deserializeBinary(field, istr, settings);
     }
-    void serializeBinary(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const override
-    {
-        nested->serializeBinary(column, row_num, ostr, settings);
-    }
+    void serializeBinary(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const override;
     void deserializeBinary(IColumn & column, ReadBuffer & istr, const FormatSettings & settings) const override
     {
         nested->deserializeBinary(column, istr, settings);
@@ -69,57 +66,38 @@ public:
         DeserializeBinaryBulkStatePtr & state,
         SubstreamsCache * cache) const override;
 
-    void serializeTextEscaped(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const override
-    {
-        nested->serializeTextEscaped(column, row_num, ostr, settings);
-    }
+    void serializeTextEscaped(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const override;
     void deserializeTextEscaped(IColumn & column, ReadBuffer & istr, const FormatSettings & settings) const override
     {
         nested->deserializeTextEscaped(column, istr, settings);
     }
 
-    void serializeTextQuoted(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const override
-    {
-        nested->serializeTextQuoted(column, row_num, ostr, settings);
-    }
+    void serializeTextQuoted(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const override;
     void deserializeTextQuoted(IColumn & column, ReadBuffer & istr, const FormatSettings & settings) const override
     {
         nested->deserializeTextQuoted(column, istr, settings);
     }
 
-    void serializeTextCSV(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const override
-    {
-        nested->serializeTextCSV(column, row_num, ostr, settings);
-    }
+    void serializeTextCSV(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const override;
     void deserializeTextCSV(IColumn & column, ReadBuffer & istr, const FormatSettings & settings) const override
     {
         nested->deserializeTextQuoted(column, istr, settings);
     }
 
-    void serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & /* settings */) const override
-    {
-        Field x;
-        column.get(row_num, x);
-        writeString(x.dump(), ostr);
-    }
+    void serializeText(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const override;
 
     void deserializeWholeText(IColumn & column, ReadBuffer & istr, const FormatSettings & settings) const override
     {
         nested->deserializeTextQuoted(column, istr, settings);
     }
 
-    void serializeTextJSON(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const override
-    {
-        nested->serializeTextJSON(column, row_num, ostr, settings);
-    }
+    void serializeTextJSON(const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const override;
     void deserializeTextJSON(IColumn & column, ReadBuffer & istr, const FormatSettings & settings) const override
     {
         nested->deserializeTextQuoted(column, istr, settings);
     }
 
 private:
-    size_t deserializeState(DeserializeBinaryBulkSettings & settings, DeserializeBinaryBulkStatePtr & state) const;
-
     void serializeBinaryBulkWithMultipleStreams(
         const ColumnString * column,
         size_t offset,
@@ -147,6 +125,8 @@ private:
         SerializationPtr create(const SerializationPtr & nested, const DataTypePtr &) const override;
         ColumnPtr create(const ColumnPtr & prev) const override;
     };
+
+    static const IColumn & resolveColumn(const IColumn & column, ColumnPtr & holder);
 
     SerializationPtr nested;
     constexpr static size_t kCompressSize = 16 << 10; // 16KB

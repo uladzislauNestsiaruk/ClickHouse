@@ -14,6 +14,9 @@
 #    include <Core/Field.h>
 #    include <base/types.h>
 #    include <Common/Exception.h>
+#    include <Common/HashTable/Hash.h>
+#    include <Common/SipHash.h>
+#    include <Common/WeakHash.h>
 #    include <Common/assert_cast.h>
 #    include <Common/logger_useful.h>
 
@@ -66,8 +69,7 @@ void ColumnFSST::decompressRow(size_t row_num, String & out) const
 
 Field ColumnFSST::operator[](size_t n) const
 {
-    String string(n, ' ');
-    Field result(std::move(string));
+    Field result;
     get(n, result);
     return result;
 }
@@ -104,9 +106,11 @@ void ColumnFSST::popBack(size_t n)
     }
 }
 
-ColumnPtr ColumnFSST::convertToFullIfNeeded() const {
+ColumnPtr ColumnFSST::convertToFullIfNeeded() const
+{
     auto column_string = ColumnString::create();
-    for (size_t ind = 0; ind < size(); ind++) {
+    for (size_t ind = 0; ind < size(); ind++)
+    {
         String val;
         decompressRow(ind, val);
         column_string->insertData(val.data(), val.size());
@@ -153,7 +157,8 @@ int ColumnFSST::doCompareAt(size_t n, size_t m, const IColumn & rhs, int /* nan_
     rhs.get(m, rhs_val);
     decompressRow(n, lhs_val);
 
-    return memcmpSmallAllowOverflow15(lhs_val.data(), lhs_val.size(), rhs_val.dump().data(), rhs_val.dump().size());
+    const auto & rhs_str = rhs_val.safeGet<String>();
+    return memcmpSmallAllowOverflow15(lhs_val.data(), lhs_val.size(), rhs_str.data(), rhs_str.size());
 }
 
 size_t ColumnFSST::byteSize() const
@@ -174,6 +179,36 @@ size_t ColumnFSST::allocatedBytes() const
 bool ColumnFSST::isDefaultAt(size_t n) const
 {
     return string_column->isDefaultAt(n);
+}
+
+void ColumnFSST::updateHashWithValue(size_t n, SipHash & hash) const
+{
+    String decompressed;
+    decompressRow(n, decompressed);
+    hash.update(decompressed.data(), decompressed.size());
+}
+
+WeakHash32 ColumnFSST::getWeakHash32() const
+{
+    WeakHash32 hash(size());
+    auto & data = hash.getData();
+    for (size_t i = 0; i < size(); ++i)
+    {
+        String decompressed;
+        decompressRow(i, decompressed);
+        data[i] = updateWeakHash32(reinterpret_cast<const UInt8 *>(decompressed.data()), decompressed.size(), data[i]);
+    }
+    return hash;
+}
+
+void ColumnFSST::updateHashFast(SipHash & hash) const
+{
+    for (size_t i = 0; i < size(); ++i)
+    {
+        String decompressed;
+        decompressRow(i, decompressed);
+        hash.update(decompressed.data(), decompressed.size());
+    }
 }
 
 void ColumnFSST::filterInnerData(const Filter & filt, std::vector<UInt64> & lengths_out, std::vector<BatchDsc> & decoders_out) const
@@ -291,14 +326,10 @@ ColumnPtr ColumnFSST::replicate(const Offsets & offsets) const
     for (size_t row = 0; row < offsets.size(); row++)
     {
         if (offsets[row] == 0)
-        {
             continue;
-        }
 
         while (dsc_ind < decoders.size() && decoders[dsc_ind].batch_start_index <= row)
-        {
             ++dsc_ind;
-        }
 
         if (dsc_ind > 0 && dsc_ind <= decoders.size() && decoders[dsc_ind - 1].batch_start_index <= row)
         {
@@ -309,9 +340,7 @@ ColumnPtr ColumnFSST::replicate(const Offsets & offsets) const
 
 
         for (size_t ind = 0; ind < offsets[row]; ind++)
-        {
             replicated_origin_lengths.emplace_back(origin_lengths[row]);
-        }
     }
 
     return ColumnFSST::create(std::move(replicated_string_column), replicated_decoders, replicated_origin_lengths);
@@ -320,9 +349,7 @@ ColumnPtr ColumnFSST::replicate(const Offsets & offsets) const
 ColumnPtr ColumnFSST::filter(const Filter & filt, ssize_t result_size_hint) const
 {
     if (string_column->empty())
-    {
         return cloneEmpty();
-    }
 
     auto filtered_string_column = string_column->filter(filt, result_size_hint);
 

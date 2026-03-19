@@ -99,7 +99,8 @@ public:
 
     void getValueNameImpl(WriteBufferFromOwnString & name_buf, size_t n, const Options & options) const override
     {
-        string_column->getValueNameImpl(name_buf, n, options);
+        auto full = convertToFullIfNeeded();
+        full->getValueNameImpl(name_buf, n, options);
     }
 
     [[nodiscard]] std::string_view getDataAt(size_t) const override { throwNotSupported(); }
@@ -130,9 +131,9 @@ public:
 
     MutableColumnPtr cloneEmpty() const override { return create(ColumnString::create())->assumeMutable(); }
 
-    void updateHashWithValue(size_t n, SipHash & hash) const override { string_column->updateHashWithValue(n, hash); }
-    WeakHash32 getWeakHash32() const override { return string_column->getWeakHash32(); }
-    void updateHashFast(SipHash & hash) const override { string_column->updateHashFast(hash); }
+    void updateHashWithValue(size_t n, SipHash & hash) const override;
+    WeakHash32 getWeakHash32() const override;
+    void updateHashFast(SipHash & hash) const override;
 
     [[nodiscard]] ColumnPtr filter(const Filter & filt, ssize_t result_size_hint) const override;
     void filter(const Filter & filt) override;
