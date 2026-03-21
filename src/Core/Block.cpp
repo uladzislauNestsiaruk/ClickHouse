@@ -1022,9 +1022,6 @@ Block materializeBlock(const Block & block, bool remove_special_column_represent
         element.column = element.column->convertToFullColumnIfConst();
         if (remove_special_column_representations)
             element.column = removeSpecialRepresentations(element.column);
-#ifdef ENABLE_FSST
-        element.column = recursiveRemoveFSST(element.column);
-#endif
     }
 
     return res;

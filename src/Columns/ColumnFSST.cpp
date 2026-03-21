@@ -76,7 +76,6 @@ Field ColumnFSST::operator[](size_t n) const
 
 void ColumnFSST::get(size_t n, Field & res) const
 {
-    LOG_DEBUG(getLogger("fsst logger"), "get on row {}", n);
     String uncompressed_string(origin_lengths[n], ' ');
     decompressRow(n, uncompressed_string);
     res = std::move(uncompressed_string);
@@ -149,8 +148,6 @@ void ColumnFSST::doInsertRangeFrom(const IColumn & src, size_t start, size_t len
 */
 int ColumnFSST::doCompareAt(size_t n, size_t m, const IColumn & rhs, int /* nan_direction_hint */) const
 {
-    LOG_DEBUG(getLogger("fsst logger"), "cmp call fsst, n = {}, m = {}", n, m);
-
     String lhs_val;
     Field rhs_val;
 

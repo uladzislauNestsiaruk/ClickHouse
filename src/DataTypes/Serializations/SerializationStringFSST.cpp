@@ -35,7 +35,6 @@ namespace ErrorCodes
 extern const int INCORRECT_DATA;
 }
 
-
 template <>
 struct SerializeFSSTState<false> : public ISerialization::SerializeBinaryBulkState
 {
@@ -55,9 +54,8 @@ struct SerializeFSSTState<true> : public ISerialization::SerializeBinaryBulkStat
     fsst_decoder_t decoder;
 };
 
-class DeserializeFSSTState : public ISerialization::DeserializeBinaryBulkState
+struct DeserializeFSSTState : public ISerialization::DeserializeBinaryBulkState
 {
-public:
     DeserializeFSSTState() = default;
     DeserializeFSSTState(
         PODArray<char8_t> & _chars, PODArray<UInt64> & _offsets, PODArray<UInt64> & _origin_lengths, const ::fsst_decoder_t & _decoder)
@@ -70,10 +68,9 @@ public:
     }
 
     std::optional<CompressedField> pop();
-    const ::fsst_decoder_t & getDecoder() { return decoder; }
+    const ::fsst_decoder_t & getDecoder() const { return decoder; }
     ~DeserializeFSSTState() override = default;
 
-private:
     PODArray<UInt8> chars;
     PODArray<UInt64> offsets;
     PODArray<UInt64> origin_lengths;
@@ -96,225 +93,152 @@ std::optional<CompressedField> DeserializeFSSTState::pop()
     return result;
 }
 
-void serializeState(
-    std::shared_ptr<SerializeFSSTState<true>> state, WriteBuffer * fsst_stream, WriteBuffer * offsets_stream, WriteBuffer * data_stream)
+void serializeStates(std::vector<std::shared_ptr<SerializeFSSTState<true>>> states, ISerialization::SerializeBinaryBulkSettings & settings)
 {
-    size_t strings = state->compressed_data.size();
-    size_t total_compressed_size = 0;
-    std::vector<size_t> offsets_after_compression;
+    using Substream = ISerialization::Substream;
 
-    for (std::string_view string : state->compressed_data)
+    /* accumulate data */
+    std::vector<PODArray<size_t>> offsets_after_compression(states.size());
+    std::vector<size_t> total_size_after_compression(states.size());
+
+
+    for (size_t state_ind = 0; state_ind < states.size(); state_ind++)
     {
-        offsets_after_compression.emplace_back(total_compressed_size);
-        total_compressed_size += string.size();
+        auto & state = states[state_ind];
+        for (std::string_view string : state->compressed_data)
+        {
+            offsets_after_compression[state_ind].emplace_back(total_size_after_compression[state_ind]);
+            total_size_after_compression[state_ind] += string.size();
+        }
     }
 
-    // size_t decoder_size = sizeof(fsst_decoder_t);
-    // fsst_stream->write(reinterpret_cast<const char *>(&decoder_size), sizeof(decoder_size));
-    fsst_stream->write(reinterpret_cast<const char *>(&state->decoder), sizeof(state->decoder));
+    /* write data */
 
-    std::string lengths_info;
-    std::string offsets_after_compression_info;
-    for (auto length : state->origin_lengths)
-        lengths_info += std::to_string(length) + " \n";
-    for (auto offset : offsets_after_compression)
-        offsets_after_compression_info += std::to_string(offset) + " \n";
+    settings.path.push_back(Substream::FsstOffsets);
+    auto * offsets_stream = settings.getter(settings.path);
+    for (size_t state_ind = 0; state_ind < states.size(); state_ind++)
+    {
+        size_t strings = states[state_ind]->compressed_data.size();
+        offsets_stream->write(reinterpret_cast<const char *>(&strings), sizeof(strings));
+        offsets_stream->write(reinterpret_cast<const char *>(offsets_after_compression[state_ind].data()), strings * sizeof(size_t));
+        offsets_stream->write(reinterpret_cast<const char *>(states[state_ind]->origin_lengths.data()), strings * sizeof(size_t));
+    }
 
-    LOG_DEBUG(getLogger("fsst logger"), "(compressed) compressed strings = {}", state->origin_lengths.size());
-    LOG_DEBUG(getLogger("fsst logger"), "(compressed) offsets after compression = {}", offsets_after_compression_info);
-    LOG_DEBUG(getLogger("fsst logger"), "(compressed) origin lengths = {}", lengths_info);
+    settings.path.back() = Substream::Fsst;
+    auto * fsst_stream = settings.getter(settings.path);
+    for (auto & state : states)
+        fsst_stream->write(reinterpret_cast<const char *>(&state->decoder), sizeof(state->decoder));
 
-    offsets_stream->write(reinterpret_cast<const char *>(&strings), sizeof(strings));
-    offsets_stream->write(reinterpret_cast<const char *>(offsets_after_compression.data()), strings * sizeof(size_t));
-    offsets_stream->write(reinterpret_cast<const char *>(state->origin_lengths.data()), strings * sizeof(size_t));
+    settings.path.back() = Substream::FsstCompressed;
+    auto * data_stream = settings.getter(settings.path);
+    for (size_t state_ind = 0; state_ind < states.size(); state_ind++)
+    {
+        data_stream->write(
+            reinterpret_cast<const char *>(&total_size_after_compression[state_ind]), sizeof(total_size_after_compression[state_ind]));
+        for (std::string_view string : states[state_ind]->compressed_data)
+            data_stream->write(reinterpret_cast<const char *>(string.data()), string.size());
+    }
+    settings.path.pop_back();
 
-    data_stream->write(reinterpret_cast<const char *>(&total_compressed_size), sizeof(total_compressed_size));
-    for (std::string_view string : state->compressed_data)
-        data_stream->write(reinterpret_cast<const char *>(string.data()), string.size());
-
-    state->compressed_data.clear();
-    state->origin_lengths.clear();
-
-    LOG_DEBUG(getLogger("fsst logger"), "chunk serialized(already compressed)");
+    states.clear();
 }
 
-void serializeState(
-    std::shared_ptr<SerializeFSSTState<false>> state, WriteBuffer * fsst_stream, WriteBuffer * offsets_stream, WriteBuffer * data_stream)
+void serializeStates(std::vector<std::shared_ptr<SerializeFSSTState<false>>> states, ISerialization::SerializeBinaryBulkSettings & settings)
 {
-    size_t strings = state->offsets.size();
-    PODArray<UInt64> origin_lengths;
-    std::unique_ptr<const unsigned char *[]> string_pointers(new const unsigned char *[strings]);
+    using Substream = ISerialization::Substream;
+    using state_ptr = std::shared_ptr<SerializeFSSTState<false>>;
+
+    /* compress data */
+    std::vector<fsst_decoder_t> decoders(states.size());
+    std::vector<PODArray<UInt64>> origin_lengths(states.size());
+    std::vector<PODArray<size_t>> offsets_after_compression(states.size());
+    std::vector<size_t> total_size_after_compression(states.size());
+    std::vector<PODArray<char8_t>> compressed_data(states.size());
+
+    size_t max_strings_per_state
+        = (*std::max_element(
+               states.begin(),
+               states.end(),
+               [](state_ptr state_a, state_ptr state_b) { return state_b->offsets.size() > state_a->offsets.size(); }))
+              ->offsets.size();
+
+    std::unique_ptr<unsigned char *[]> compressed_data_pointers(new unsigned char *[max_strings_per_state]);
+    PODArray<size_t> compressed_data_lengths(max_strings_per_state);
+    std::unique_ptr<const unsigned char *[]> string_pointers(new const unsigned char *[max_strings_per_state]);
     bool zero_terminated = false; // not sure
 
-    for (size_t ind = 0; ind < strings; ind++)
+    auto compress_state = [&](size_t state_ind)
     {
-        size_t next_offset = ind + 1 == strings ? state->chars.size() : state->offsets[ind + 1];
-        origin_lengths.push_back(next_offset - state->offsets[ind]);
-        string_pointers[ind] = reinterpret_cast<const unsigned char *>(state->chars.data() + state->offsets[ind]);
-    }
+        const state_ptr & state = states[state_ind];
+        size_t strings = state->offsets.size();
 
+        for (size_t ind = 0; ind < strings; ind++)
+        {
+            size_t next_offset = ind + 1 == strings ? state->chars.size() : state->offsets[ind + 1];
+            origin_lengths[state_ind].emplace_back(next_offset - state->offsets[ind]);
+            string_pointers[ind] = reinterpret_cast<const unsigned char *>(state->chars.data() + state->offsets[ind]);
+        }
 
-    auto * fsst_encoder = fsst_create(strings, reinterpret_cast<size_t *>(origin_lengths.data()), string_pointers.get(), zero_terminated);
+        auto * fsst_encoder
+            = fsst_create(strings, reinterpret_cast<size_t *>(origin_lengths[state_ind].data()), string_pointers.get(), zero_terminated);
 
-    PODArray<char8_t> compressed_data(2 * state->chars.size() + 8);
-    PODArray<size_t> compressed_data_lenegths(strings);
-    std::unique_ptr<unsigned char *[]> compressed_data_pointers(new unsigned char *[strings]);
-
-    size_t compressed_strings = fsst_compress(
-        fsst_encoder,
-        strings,
-        reinterpret_cast<unsigned long *>(origin_lengths.data()), // NOLINT
-        string_pointers.get(),
-        compressed_data.size(),
-        reinterpret_cast<unsigned char *>(compressed_data.data()),
-        compressed_data_lenegths.data(),
-        compressed_data_pointers.get());
-
-    LOG_DEBUG(getLogger("fsst logger"), "compressed {} strings", compressed_strings);
-
-    PODArray<size_t> offsets_after_compression(compressed_strings);
-    for (size_t ind = 0; ind < compressed_strings; ind++)
-        offsets_after_compression[ind] = compressed_data_pointers[ind] - compressed_data_pointers[0];
-
-    size_t total_size_after_compression
-        = compressed_data_pointers[compressed_strings - 1] - compressed_data_pointers[0] + compressed_data_lenegths[compressed_strings - 1];
-
-    std::string lengths_info;
-    std::string offsets_after_compression_info;
-    for (auto length : origin_lengths)
-        lengths_info += std::to_string(length) + " \n";
-    for (auto offset : offsets_after_compression)
-        offsets_after_compression_info += std::to_string(offset) + " \n";
-
-    LOG_DEBUG(getLogger("fsst logger"), "(serialize) compressed strings = {}", compressed_strings);
-    LOG_DEBUG(getLogger("fsst logger"), "(serialize) offsets after compression = {}", offsets_after_compression_info);
-    LOG_DEBUG(getLogger("fsst logger"), "(serialize) origin lengths = {}", lengths_info);
-
-    //unsigned char decoder_serialized[sizeof(fsst_decoder_t)];
-    //size_t serialized_decoder_size = fsst_export(fsst_encoder, decoder_serialized);
-    //fsst_stream->write(reinterpret_cast<const char *>(&serialized_decoder_size), sizeof(serialized_decoder_size));
-    auto decoder = fsst_decoder(fsst_encoder);
-    fsst_stream->write(reinterpret_cast<const char *>(&decoder), sizeof(decoder));
-
-    offsets_stream->write(reinterpret_cast<const char *>(&compressed_strings), sizeof(compressed_strings));
-    offsets_stream->write(reinterpret_cast<const char *>(offsets_after_compression.data()), compressed_strings * sizeof(size_t));
-    offsets_stream->write(reinterpret_cast<const char *>(origin_lengths.data()), compressed_strings * sizeof(size_t));
-
-    data_stream->write(reinterpret_cast<const char *>(&total_size_after_compression), sizeof(total_size_after_compression));
-    data_stream->write(reinterpret_cast<const char *>(compressed_data.data()), total_size_after_compression);
-
-    /* clear compressed state */
-    if (compressed_strings != strings)
-    {
-        state->offsets.erase(state->offsets.begin(), state->offsets.begin() + compressed_strings);
-        std::transform(
-            state->offsets.begin(),
-            state->offsets.end(),
-            state->offsets.begin(),
-            [&](auto offset) { return offset - (string_pointers[compressed_strings] - string_pointers[0]); });
-
-        state->chars.erase(state->chars.begin(), state->chars.begin() + (string_pointers[compressed_strings] - string_pointers[0]));
-
-        LOG_DEBUG(
-            getLogger("fsst logger"),
-            "compressed only {} strings from {}, chars.size() = {}, offsets.size() = {}",
-            compressed_strings,
+        compressed_data[state_ind].resize(2 * state->chars.size() + 8);
+        size_t compressed_strings = fsst_compress(
+            fsst_encoder,
             strings,
-            state->chars.size(),
-            state->offsets.size());
-        serializeState(state, fsst_stream, offsets_stream, data_stream);
-    }
-    else
+            reinterpret_cast<unsigned long *>(origin_lengths[state_ind].data()), // NOLINT
+            string_pointers.get(),
+            compressed_data[state_ind].size(),
+            reinterpret_cast<unsigned char *>(compressed_data[state_ind].data()),
+            compressed_data_lengths.data(),
+            compressed_data_pointers.get());
+
+        offsets_after_compression[state_ind].resize(state->offsets.size());
+        for (size_t ind = 0; ind < compressed_strings; ind++)
+            offsets_after_compression[state_ind][ind] = compressed_data_pointers[ind] - compressed_data_pointers[0];
+
+        total_size_after_compression[state_ind] = compressed_data_pointers[compressed_strings - 1] - compressed_data_pointers[0]
+            + compressed_data_lengths[compressed_strings - 1];
+
+        decoders[state_ind] = fsst_decoder(fsst_encoder);
+    };
+
+    for (size_t state_ind = 0; state_ind < states.size(); state_ind++)
+        compress_state(state_ind);
+
+
+    /* write compressed strings offsets and lengths */
+    settings.path.push_back(Substream::FsstOffsets);
+    auto * offsets_stream = settings.getter(settings.path);
+    for (size_t state_ind = 0; state_ind < states.size(); state_ind++)
     {
-        state->chars.clear();
-        state->offsets.clear();
+        size_t compressed_strings = states[state_ind]->offsets.size();
+        offsets_stream->write(reinterpret_cast<const char *>(&compressed_strings), sizeof(compressed_strings));
+        offsets_stream->write(
+            reinterpret_cast<const char *>(offsets_after_compression[state_ind].data()), compressed_strings * sizeof(size_t));
+        offsets_stream->write(reinterpret_cast<const char *>(origin_lengths[state_ind].data()), compressed_strings * sizeof(size_t));
     }
 
-    LOG_DEBUG(getLogger("fsst logger"), "chunk serialized(compressed now)");
+    /* write fsst tables */
+    settings.path.back() = Substream::Fsst;
+    auto * fsst_stream = settings.getter(settings.path);
+    for (const auto & decoder : decoders)
+        fsst_stream->write(reinterpret_cast<const char *>(&decoder), sizeof(decoder));
+
+    /* write compressed data */
+    settings.path.back() = Substream::FsstCompressed;
+    auto * data_stream = settings.getter(settings.path);
+    for (size_t state_ind = 0; state_ind < states.size(); state_ind++)
+    {
+        data_stream->write(
+            reinterpret_cast<const char *>(&total_size_after_compression[state_ind]), sizeof(total_size_after_compression[state_ind]));
+        data_stream->write(reinterpret_cast<const char *>(compressed_data[state_ind].data()), total_size_after_compression[state_ind]);
+    }
+    settings.path.pop_back();
+
+    states.clear();
 }
 
-size_t deserializeState(
-    SerializationStringFSST::DeserializeBinaryBulkStatePtr & state,
-    ReadBuffer * fsst_stream,
-    ReadBuffer * offsets_stream,
-    ReadBuffer * compressed_data_stream)
-{
-    if (offsets_stream->eof())
-        return 0;
-
-    /* read fsst */
-    /* unsigned char decoder_buffer[sizeof(fsst_decoder_t)];
-    fsst_decoder_t decoder;
-    size_t decoder_size;
-    size_t decoder_read_bytes = fsst_stream->readBig(reinterpret_cast<char *>(&decoder_size), sizeof(decoder_size));
-
-    if (decoder_size > sizeof(fsst_decoder_t))
-        throw Exception(
-            ErrorCodes::INCORRECT_DATA,
-            "FSST decoder size {} exceeds maximum {}. The data is likely corrupt or was written with an incompatible format.",
-            decoder_size,
-            sizeof(fsst_decoder_t));
-    */
-    fsst_decoder_t decoder;
-    size_t decoder_read_bytes = fsst_stream->readBig(reinterpret_cast<char *>(&decoder), sizeof(decoder));
-    // fsst_import(&decoder, decoder_buffer);
-
-    LOG_DEBUG(getLogger("fsst logger"), "fsst_table[0] = {}, fsst_table[1] = {}, fsst_table[2] = {}", decoder.symbol[0], decoder.symbol[1], decoder.symbol[2]);
-
-    /* read offsets and lengths */
-    size_t strings;
-    size_t metadata_bytes_read = offsets_stream->readBig(reinterpret_cast<char *>(&strings), sizeof(strings));
-
-    LOG_DEBUG(getLogger("fsst logger"), "going to deserialize {} strings", strings);
-
-    static constexpr size_t MAX_STRINGS_PER_BATCH = 10'000'000;
-    if (strings > MAX_STRINGS_PER_BATCH)
-        throw Exception(
-            ErrorCodes::INCORRECT_DATA,
-            "FSST batch claims {} strings, which exceeds the sanity limit of {}. "
-            "The data is likely corrupt or was written with an incompatible format.",
-            strings,
-            MAX_STRINGS_PER_BATCH);
-
-    PODArray<UInt64> offsets(strings);
-    PODArray<UInt64> origin_lengths(strings);
-
-    metadata_bytes_read += offsets_stream->readBig(reinterpret_cast<char *>(offsets.data()), sizeof(size_t) * strings);
-    metadata_bytes_read += offsets_stream->readBig(reinterpret_cast<char *>(origin_lengths.data()), sizeof(size_t) * strings);
-
-    std::string lengths_info;
-    std::string offsets_after_compression_info;
-    for (auto length : origin_lengths)
-        lengths_info += std::to_string(length) + " \n";
-    for (auto offset : offsets)
-        offsets_after_compression_info += std::to_string(offset) + " \n";
-
-    LOG_DEBUG(getLogger("fsst logger"), "(deserialize) compressed strings = {}", strings);
-    LOG_DEBUG(getLogger("fsst logger"), "(deserialize) offsets after compression = {}", offsets_after_compression_info);
-    LOG_DEBUG(getLogger("fsst logger"), "(deserialize) origin lengths = {}", lengths_info);
-
-    /* read compressed strings */
-    size_t total_compressed_bytes;
-    size_t compressed_bytes_read
-        = compressed_data_stream->readBig(reinterpret_cast<char *>(&total_compressed_bytes), sizeof(total_compressed_bytes));
-
-    LOG_DEBUG(getLogger("fsst logger"), "going to deserialize {} bytes", total_compressed_bytes);
-
-    PODArray<char8_t> compressed_bytes(total_compressed_bytes);
-    compressed_bytes_read += compressed_data_stream->readBig(reinterpret_cast<char *>(compressed_bytes.data()), total_compressed_bytes);
-
-    std::string compressed_data;
-    for(auto c : compressed_bytes) {
-        compressed_data += std::to_string(static_cast<int>(c)) + "\n";
-    }
-    LOG_DEBUG(getLogger("fsst logger"), "compressed data {}", compressed_data);
-
-    state = std::make_shared<DeserializeFSSTState>(compressed_bytes, offsets, origin_lengths, decoder);
-
-    LOG_DEBUG(
-        getLogger("fsst logger"), "(deserialize) read {} {} {} bytes", decoder_read_bytes, metadata_bytes_read, compressed_bytes_read);
-    return decoder_read_bytes + metadata_bytes_read + compressed_bytes_read;
-}
 ISerialization::KindStack SerializationStringFSST::getKindStack() const
 {
     auto kind_stack = nested->getKindStack();
@@ -411,38 +335,29 @@ void SerializationStringFSST::serializeBinaryBulkWithMultipleStreams(
     SerializeBinaryBulkSettings & settings,
     SerializeBinaryBulkStatePtr & state) const
 {
-    settings.path.push_back(Substream::Fsst);
-    auto * fsst_stream = settings.getter(settings.path);
-    if (!fsst_stream)
-        throw Exception(ErrorCodes::INCORRECT_DATA, "no FSST stream");
-
-    settings.path.back() = Substream::FsstOffsets;
-    auto * offsets_stream = settings.getter(settings.path);
-    if (!offsets_stream)
-        throw Exception(ErrorCodes::INCORRECT_DATA, "No compressed strings offsets stream");
-
-    settings.path.back() = Substream::FsstCompressed;
-    auto * data_stream = settings.getter(settings.path);
-    if (!data_stream)
-        throw Exception(ErrorCodes::INCORRECT_DATA, "No compressed data stream");
-    settings.path.pop_back();
-
     state = state ? state : std::make_shared<SerializeFSSTState<false>>();
     auto serialize_state = std::static_pointer_cast<SerializeFSSTState<false>>(state);
+    std::vector<decltype(serialize_state)> states_to_serialize;
 
     for (size_t ind = offset; ind < offset + limit; ind++)
     {
         size_t start_offset = ind == 0 ? 0 : column->getOffsets()[ind - 1];
         size_t end_offset = column->getOffsets()[ind];
 
-        serialize_state->offsets.push_back(serialize_state->chars.size());
+        serialize_state->offsets.emplace_back(serialize_state->chars.size());
         serialize_state->chars.insert(column->getChars().data() + start_offset, column->getChars().data() + end_offset);
         if (serialize_state->chars.size() >= kCompressSize)
-            serializeState(serialize_state, fsst_stream, offsets_stream, data_stream);
+        {
+            states_to_serialize.emplace_back(serialize_state);
+            serialize_state = std::make_shared<SerializeFSSTState<false>>();
+        }
     }
 
-    if (offset + limit >= column->size() && !serialize_state->chars.empty())
-        serializeState(serialize_state, fsst_stream, offsets_stream, data_stream);
+    if (!serialize_state->offsets.empty())
+        states_to_serialize.emplace_back(serialize_state);
+
+    if (!states_to_serialize.empty())
+        serializeStates(states_to_serialize, settings);
 }
 
 void SerializationStringFSST::serializeBinaryBulkWithMultipleStreams(
@@ -452,24 +367,9 @@ void SerializationStringFSST::serializeBinaryBulkWithMultipleStreams(
     SerializeBinaryBulkSettings & settings,
     SerializeBinaryBulkStatePtr & state) const
 {
-    settings.path.push_back(Substream::Fsst);
-    auto * fsst_stream = settings.getter(settings.path);
-    if (!fsst_stream)
-        throw Exception(ErrorCodes::INCORRECT_DATA, "no FSST stream");
-
-    settings.path.back() = Substream::FsstOffsets;
-    auto * offsets_stream = settings.getter(settings.path);
-    if (!offsets_stream)
-        throw Exception(ErrorCodes::INCORRECT_DATA, "No compressed strings offsets stream");
-
-    settings.path.back() = Substream::FsstCompressed;
-    auto * data_stream = settings.getter(settings.path);
-    if (!data_stream)
-        throw Exception(ErrorCodes::INCORRECT_DATA, "No compressed data stream");
-    settings.path.pop_back();
-
     state = state ? state : std::make_shared<SerializeFSSTState<true>>();
     auto serialize_state = std::static_pointer_cast<SerializeFSSTState<true>>(state);
+    std::vector<decltype(serialize_state)> states_to_serialize;
 
     size_t state_size = 0;
     auto string_column = column->getStringColumn();
@@ -493,25 +393,45 @@ void SerializationStringFSST::serializeBinaryBulkWithMultipleStreams(
         if (state_size >= kCompressSize)
         {
             state_size = 0;
-            serializeState(serialize_state, fsst_stream, offsets_stream, data_stream);
+            states_to_serialize.emplace_back(serialize_state);
+            serialize_state = std::make_shared<SerializeFSSTState<true>>();
         }
     }
 
-    if (offset + limit >= column->size() && !serialize_state->compressed_data.empty())
-        serializeState(serialize_state, fsst_stream, offsets_stream, data_stream);
+    if (!serialize_state->origin_lengths.empty())
+        states_to_serialize.emplace_back(serialize_state);
+
+    if (!states_to_serialize.empty())
+        serializeStates(states_to_serialize, settings);
 }
 
 void SerializationStringFSST::serializeBinaryBulkWithMultipleStreams(
     const IColumn & column, size_t offset, size_t limit, SerializeBinaryBulkSettings & settings, SerializeBinaryBulkStatePtr & state) const
 {
     limit = limit == 0 || limit + offset > column.size() ? column.size() - offset : limit;
-    if (const auto * column_string = typeid_cast<const ColumnString *>(&column))
+    if (limit == 0)
     {
-        serializeBinaryBulkWithMultipleStreams(column_string, offset, limit, settings, state);
+        settings.path.push_back(Substream::Fsst);
+        settings.getter(settings.path);
+        settings.path.back() = Substream::FsstOffsets;
+        settings.getter(settings.path);
+        settings.path.back() = Substream::FsstCompressed;
+        settings.getter(settings.path);
+        settings.path.pop_back();
+        return;
     }
+
+    if (const auto * column_string = typeid_cast<const ColumnString *>(&column))
+        serializeBinaryBulkWithMultipleStreams(column_string, offset, limit, settings, state);
     else if (const auto * column_fsst = typeid_cast<const ColumnFSST *>(&column))
-    {
         serializeBinaryBulkWithMultipleStreams(column_fsst, offset, limit, settings, state);
+    else
+    {
+        auto full_column = column.convertToFullColumnIfConst()->convertToFullColumnIfSparse();
+        if (const auto * resolved_string = typeid_cast<const ColumnString *>(full_column.get()))
+            serializeBinaryBulkWithMultipleStreams(resolved_string, offset, limit, settings, state);
+        else
+            throw Exception(ErrorCodes::INCORRECT_DATA, "SerializationStringFSST: unexpected column type {}", column.getName());
     }
 }
 
@@ -523,51 +443,85 @@ void SerializationStringFSST::deserializeBinaryBulkWithMultipleStreams(
     DeserializeBinaryBulkStatePtr & state,
     SubstreamsCache * /* cache */) const
 {
-    settings.path.push_back(Substream::Fsst);
-    auto * fsst_stream = settings.getter(settings.path);
-    if (!fsst_stream)
-        throw Exception(ErrorCodes::INCORRECT_DATA, "no FSST stream");
-
-    settings.path.back() = Substream::FsstOffsets;
-    auto * offsets_stream = settings.getter(settings.path);
-    if (!offsets_stream)
-        throw Exception(ErrorCodes::INCORRECT_DATA, "No compressed strings offsets stream");
-
-    settings.path.back() = Substream::FsstCompressed;
-    auto * compressed_data_stream = settings.getter(settings.path);
-    if (!compressed_data_stream)
-        throw Exception(ErrorCodes::INCORRECT_DATA, "No compressed data stream");
-    settings.path.pop_back();
+    using Substream = ISerialization::Substream;
 
     auto & column_fsst = assert_cast<ColumnFSST &>(*column->assumeMutable());
+    std::vector<std::shared_ptr<DeserializeFSSTState>> states;
+    if (state)
+        states.emplace_back(std::static_pointer_cast<DeserializeFSSTState>(state));
 
-    if (!state && deserializeState(state, fsst_stream, offsets_stream, compressed_data_stream) == 0)
-        return;
-
-    auto deserialize_state = std::static_pointer_cast<DeserializeFSSTState>(state);
-    std::shared_ptr<fsst_decoder_t> decoder_ptr;
-
-    for (size_t rows_read = 0; limit == 0 || rows_read < limit; ++rows_read)
+    /* read offsets */
+    settings.path.push_back(Substream::FsstOffsets);
+    auto * offsets_stream = settings.getter(settings.path);
+    for (size_t rows_read = 0; (limit == 0 || rows_read < limit) && !offsets_stream->eof();)
     {
-        auto current_field = deserialize_state->pop();
-        if (!current_field.has_value())
-        {
-            decoder_ptr.reset();
-            if (deserializeState(state, fsst_stream, offsets_stream, compressed_data_stream) == 0)
-                break;
-            deserialize_state = std::static_pointer_cast<DeserializeFSSTState>(state);
-            current_field = deserialize_state->pop();
-            if (!current_field.has_value())
-                break;
-        }
+        states.emplace_back(std::make_shared<DeserializeFSSTState>());
 
-        if (!decoder_ptr)
+        size_t strings;
+        (void)offsets_stream->readBig(reinterpret_cast<char *>(&strings), sizeof(strings));
+
+        LOG_DEBUG(getLogger("fsst logger"), "going to deserialize {} strings", strings);
+
+        states.back()->offsets.resize(strings);
+        states.back()->origin_lengths.resize(strings);
+
+        (void)offsets_stream->readBig(reinterpret_cast<char *>(states.back()->offsets.data()), sizeof(size_t) * strings);
+        (void)offsets_stream->readBig(reinterpret_cast<char *>(states.back()->origin_lengths.data()), sizeof(size_t) * strings);
+
+        rows_read += strings;
+    }
+
+    /* read fsst decoders */
+    settings.path.back() = Substream::Fsst;
+    auto * fsst_stream = settings.getter(settings.path);
+
+    for (const auto & s : states)
+        (void)fsst_stream->readBig(reinterpret_cast<char *>(&s->decoder), sizeof(s->decoder));
+
+    /* read compressed data */
+    settings.path.back() = Substream::FsstCompressed;
+    auto * compressed_data_stream = settings.getter(settings.path);
+    settings.path.pop_back();
+
+    for (const auto & s : states)
+    {
+        size_t total_compressed_bytes;
+        (void)compressed_data_stream->readBig(reinterpret_cast<char *>(&total_compressed_bytes), sizeof(total_compressed_bytes));
+        s->chars.resize(total_compressed_bytes);
+        (void)compressed_data_stream->readBig(reinterpret_cast<char *>(s->chars.data()), total_compressed_bytes);
+    }
+
+    /* fill Column */
+    size_t current_state = 0;
+    bool need_new_batch = true;
+    for (size_t rows_read = 0; (limit == 0 || rows_read < limit) && current_state < states.size(); ++rows_read)
+    {
+        auto current_field = states[current_state]->pop();
+
+        if (current_field.has_value())
         {
-            decoder_ptr = std::make_shared<fsst_decoder_t>(deserialize_state->getDecoder());
-            column_fsst.appendNewBatch(current_field.value(), decoder_ptr);
+            if (need_new_batch)
+            {
+                column_fsst.appendNewBatch(
+                    current_field.value(), std::make_shared<fsst_decoder_t>(states[current_state]->getDecoder()));
+                need_new_batch = false;
+            }
+            else
+            {
+                column_fsst.append(current_field.value());
+            }
         }
         else
-            column_fsst.append(current_field.value());
+        {
+            ++current_state;
+            need_new_batch = true;
+            --rows_read; /// this iteration produced no row, retry with next state
+        }
+    }
+
+    if (current_state < states.size())
+    {
+        state = states[current_state];
     }
 }
 

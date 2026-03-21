@@ -277,10 +277,13 @@ ISerialization::KindStack SerializationInfo::chooseKindStack(const Data & data, 
 {
     ISerialization::KindStack kind_stack = {ISerialization::Kind::DEFAULT};
     double ratio = data.num_rows ? std::min(static_cast<double>(data.num_defaults) / static_cast<double>(data.num_rows), 1.0) : 0.0;
-    if (ratio > settings.ratio_of_defaults_for_sparse)
-        kind_stack.push_back(ISerialization::Kind::SPARSE);
+    /// FSST and SPARSE are mutually exclusive: the FSST serializer handles
+    /// all substreams directly and bypasses the Sparse layer, so combining
+    /// them would produce a broken serialization chain.
     if (data.is_string_column)
         kind_stack.push_back(ISerialization::Kind::FSST);
+    else if (ratio > settings.ratio_of_defaults_for_sparse)
+        kind_stack.push_back(ISerialization::Kind::SPARSE);
 
     return kind_stack;
 }

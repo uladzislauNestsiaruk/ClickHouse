@@ -172,10 +172,20 @@ public:
     [[nodiscard]] size_t byteSizeAt(size_t) const override;
     [[nodiscard]] size_t allocatedBytes() const override;
 
-    /* There is no definition of "default" value in FSST column */
-    [[nodiscard]] double getRatioOfDefaultRows(double) const override { throwNotSupported(); }
-    [[nodiscard]] UInt64 getNumberOfDefaultRows() const override { throwNotSupported(); }
-    void getIndicesOfNonDefaultRows(Offsets &, size_t, size_t) const override { throwNotSupported(); }
+    /// Delegate default-row detection to the inner string column.
+    /// The compressed representation preserves default semantics (empty string → empty compressed).
+    [[nodiscard]] double getRatioOfDefaultRows(double sample_ratio) const override
+    {
+        return string_column->getRatioOfDefaultRows(sample_ratio);
+    }
+    [[nodiscard]] UInt64 getNumberOfDefaultRows() const override
+    {
+        return string_column->getNumberOfDefaultRows();
+    }
+    void getIndicesOfNonDefaultRows(Offsets & indices, size_t from, size_t limit) const override
+    {
+        string_column->getIndicesOfNonDefaultRows(indices, from, limit);
+    }
 
     void doInsertRangeFrom(const IColumn & src, size_t start, size_t length) override;
 
