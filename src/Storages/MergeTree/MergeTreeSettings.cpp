@@ -198,6 +198,19 @@ namespace ErrorCodes
     └────────┴────────────────────┘
     ```
     )", 0) \
+    DECLARE(Float, min_avg_string_length_for_fsst_serialization, 8.0f, R"(
+    Minimum average string length (in bytes, excluding empty/default strings)
+    required for a String column to use FSST compression. FSST adds per-string
+    overhead (compressed offsets, origin lengths), so very short strings do not
+    benefit. Based on the FSST paper (Boncz et al., VLDB 2020), compression
+    ratios improve significantly above ~8 bytes average length.
+    )", 0) \
+    DECLARE(UInt64, min_total_bytes_for_fsst_serialization, 16384, R"(
+    Minimum total uncompressed string data volume (in bytes) required for a
+    String column to use FSST compression. The FSST symbol table (`fsst_create`)
+    needs at least ~16KB of training data to produce a good compression table.
+    With less data, the overhead of storing decoder tables outweighs savings.
+    )", 0) \
     DECLARE(Bool, replace_long_file_name_to_hash, true, R"(
     If the file name for column is too long (more than 'max_file_name_length'
     bytes) replace it to SipHash128

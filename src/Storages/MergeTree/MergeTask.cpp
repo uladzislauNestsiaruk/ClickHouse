@@ -127,6 +127,8 @@ namespace MergeTreeSetting
     extern const MergeTreeSettingsNonZeroUInt64 merge_max_block_size;
     extern const MergeTreeSettingsUInt64 min_merge_bytes_to_use_direct_io;
     extern const MergeTreeSettingsFloat ratio_of_defaults_for_sparse_serialization;
+    extern const MergeTreeSettingsFloat min_avg_string_length_for_fsst_serialization;
+    extern const MergeTreeSettingsUInt64 min_total_bytes_for_fsst_serialization;
     extern const MergeTreeSettingsUInt64 vertical_merge_algorithm_min_bytes_to_activate;
     extern const MergeTreeSettingsUInt64 vertical_merge_algorithm_min_columns_to_activate;
     extern const MergeTreeSettingsUInt64 vertical_merge_algorithm_min_rows_to_activate;
@@ -783,6 +785,8 @@ bool MergeTask::ExecuteAndFinalizeHorizontalPart::prepare() const
         (*merge_tree_settings)[MergeTreeSetting::map_serialization_version],
         (*merge_tree_settings)[MergeTreeSetting::propagate_types_serialization_versions_to_nested_types],
     };
+    info_settings.min_avg_string_length_for_fsst = (*merge_tree_settings)[MergeTreeSetting::min_avg_string_length_for_fsst_serialization];
+    info_settings.min_total_bytes_for_fsst = (*merge_tree_settings)[MergeTreeSetting::min_total_bytes_for_fsst_serialization];
 
     SerializationInfoByName infos(global_ctx->storage_columns, info_settings);
     global_ctx->alter_conversions.reserve(global_ctx->future_part->parts.size());

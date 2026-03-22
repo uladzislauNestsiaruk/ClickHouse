@@ -14,6 +14,9 @@ struct SerializationInfoSettings
     double ratio_of_defaults_for_sparse = 1.0;
     bool choose_kind = false;
 
+    double min_avg_string_length_for_fsst = 8.0;
+    size_t min_total_bytes_for_fsst = 16384;
+
     MergeTreeSerializationInfoVersion version = MergeTreeSerializationInfoVersion::BASIC;
     MergeTreeStringSerializationVersion string_serialization_version = MergeTreeStringSerializationVersion::SINGLE_STREAM;
     MergeTreeNullableSerializationVersion nullable_serialization_version = MergeTreeNullableSerializationVersion::BASIC;

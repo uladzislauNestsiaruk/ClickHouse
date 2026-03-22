@@ -260,6 +260,8 @@ namespace MergeTreeSetting
     extern const MergeTreeSettingsUInt64 parts_to_delay_insert;
     extern const MergeTreeSettingsUInt64 parts_to_throw_insert;
     extern const MergeTreeSettingsFloat ratio_of_defaults_for_sparse_serialization;
+    extern const MergeTreeSettingsFloat min_avg_string_length_for_fsst_serialization;
+    extern const MergeTreeSettingsUInt64 min_total_bytes_for_fsst_serialization;
     extern const MergeTreeSettingsBool remove_empty_parts;
     extern const MergeTreeSettingsBool remove_rolled_back_parts_immediately;
     extern const MergeTreeSettingsBool replace_long_file_name_to_hash;
@@ -10414,6 +10416,8 @@ void MergeTreeData::resetSerializationHints(const DataPartsLock & /*lock*/)
         (*getSettings())[MergeTreeSetting::map_serialization_version],
         (*getSettings())[MergeTreeSetting::propagate_types_serialization_versions_to_nested_types],
     };
+    settings.min_avg_string_length_for_fsst = (*getSettings())[MergeTreeSetting::min_avg_string_length_for_fsst_serialization];
+    settings.min_total_bytes_for_fsst = (*getSettings())[MergeTreeSetting::min_total_bytes_for_fsst_serialization];
 
     const auto metadata_snapshot = getInMemoryMetadataPtr();
     const auto & storage_columns = metadata_snapshot->getColumns();

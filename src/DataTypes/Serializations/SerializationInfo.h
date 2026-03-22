@@ -40,11 +40,14 @@ public:
         size_t num_rows = 0;
         size_t num_defaults = 0;
         bool is_string_column = false;
+        size_t total_string_bytes = 0;
 
         void add(const IColumn & column);
         void add(const Data & other);
         void remove(const Data & other);
         void addDefaults(size_t length);
+
+        double avgStringLength() const noexcept;
     };
 
     SerializationInfo(ISerialization::KindStack kind_stack_, const SerializationInfoSettings & settings_);
@@ -63,10 +66,8 @@ public:
 
     virtual std::shared_ptr<SerializationInfo> clone() const;
 
-    virtual std::shared_ptr<SerializationInfo> createWithType(
-        const IDataType & old_type,
-        const IDataType & new_type,
-        const SerializationInfoSettings & new_settings) const;
+    virtual std::shared_ptr<SerializationInfo>
+    createWithType(const IDataType & old_type, const IDataType & new_type, const SerializationInfoSettings & new_settings) const;
 
     virtual void serialializeKindStackBinary(WriteBuffer & out) const;
     virtual void deserializeFromKindsBinary(ReadBuffer & in);

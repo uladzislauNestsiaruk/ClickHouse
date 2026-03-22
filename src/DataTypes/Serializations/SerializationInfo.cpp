@@ -48,7 +48,18 @@ void SerializationInfo::Data::add(const IColumn & column)
 
     num_rows += rows;
     num_defaults += static_cast<size_t>(ratio * static_cast<double>(rows));
-    is_string_column |= column.getFamilyName() == std::string("String");
+
+    bool col_is_string = column.getFamilyName() == std::string("String");
+    is_string_column |= col_is_string;
+
+    if (col_is_string && rows > 0)
+    {
+        /// For ColumnString: byteSize = chars.size() + offsets.size() * sizeof(UInt64).
+        /// We want just the raw string data bytes, so subtract the offset array overhead.
+        size_t byte_size = column.byteSize();
+        size_t offset_overhead = rows * sizeof(UInt64);
+        total_string_bytes += (byte_size > offset_overhead) ? (byte_size - offset_overhead) : 0;
+    }
 }
 
 void SerializationInfo::Data::add(const Data & other)
@@ -56,6 +67,7 @@ void SerializationInfo::Data::add(const Data & other)
     num_rows += other.num_rows;
     num_defaults += other.num_defaults;
     is_string_column |= other.is_string_column;
+    total_string_bytes += other.total_string_bytes;
 }
 
 void SerializationInfo::Data::remove(const Data & other)
@@ -63,6 +75,7 @@ void SerializationInfo::Data::remove(const Data & other)
     num_rows -= other.num_rows;
     num_defaults -= other.num_defaults;
     is_string_column ^= other.is_string_column;
+    total_string_bytes = (total_string_bytes > other.total_string_bytes) ? (total_string_bytes - other.total_string_bytes) : 0;
 }
 
 void SerializationInfo::Data::addDefaults(size_t length)
@@ -70,6 +83,13 @@ void SerializationInfo::Data::addDefaults(size_t length)
     num_rows += length;
     num_defaults += length;
 }
+
+double SerializationInfo::Data::avgStringLength() const noexcept
+{
+    size_t non_default_rows = num_rows > num_defaults ? num_rows - num_defaults : 0;
+    return non_default_rows > 0 ? static_cast<double>(total_string_bytes) / static_cast<double>(non_default_rows) : 0.0;
+}
+
 
 SerializationInfo::SerializationInfo(ISerialization::KindStack kind_stack_, const Settings & settings_)
     : settings(settings_)
@@ -277,10 +297,10 @@ ISerialization::KindStack SerializationInfo::chooseKindStack(const Data & data, 
 {
     ISerialization::KindStack kind_stack = {ISerialization::Kind::DEFAULT};
     double ratio = data.num_rows ? std::min(static_cast<double>(data.num_defaults) / static_cast<double>(data.num_rows), 1.0) : 0.0;
-    /// FSST and SPARSE are mutually exclusive: the FSST serializer handles
-    /// all substreams directly and bypasses the Sparse layer, so combining
-    /// them would produce a broken serialization chain.
-    if (data.is_string_column)
+
+    if (data.is_string_column && ratio <= settings.ratio_of_defaults_for_sparse
+        && data.avgStringLength() >= settings.min_avg_string_length_for_fsst
+        && data.total_string_bytes >= settings.min_total_bytes_for_fsst)
         kind_stack.push_back(ISerialization::Kind::FSST);
     else if (ratio > settings.ratio_of_defaults_for_sparse)
         kind_stack.push_back(ISerialization::Kind::SPARSE);
