@@ -15,14 +15,7 @@
 #include <Common/PODArray.h>
 #include <Common/WeakHash.h>
 
-
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#pragma GCC diagnostic ignored "-Wcast-align"
-#pragma GCC diagnostic ignored "-Wcast-qual"
-
-#include </Users/uladzislaunestsiaruk/Projects/Clickhouse_temp/ClickHouse/contrib/fsst/fsst.h>
+#include <fsst.h>
 
 namespace DB
 {

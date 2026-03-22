@@ -211,6 +211,14 @@ namespace ErrorCodes
     needs at least ~16KB of training data to produce a good compression table.
     With less data, the overhead of storing decoder tables outweighs savings.
     )", 0) \
+    DECLARE(Float, max_fsst_compression_ratio, 0.85f, R"(
+    Maximum trial compression ratio (compressed_size / original_size) for a
+    String column to use FSST serialization. A sample of strings is trial-
+    compressed with FSST; only if the ratio is below this threshold, FSST is
+    used. A value of 0.85 means FSST must achieve at least 15% compression.
+    Random/incompressible data (UUIDs, hashes) typically yields ratio ~1.0
+    and will not be FSST-compressed. Set to 1.0 to disable this check.
+    )", 0) \
     DECLARE(Bool, replace_long_file_name_to_hash, true, R"(
     If the file name for column is too long (more than 'max_file_name_length'
     bytes) replace it to SipHash128

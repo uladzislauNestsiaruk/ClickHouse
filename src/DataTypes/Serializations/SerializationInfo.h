@@ -42,6 +42,8 @@ public:
         bool is_string_column = false;
         size_t total_string_bytes = 0;
 
+        double fsst_compression_ratio = 1.0;
+
         void add(const IColumn & column);
         void add(const Data & other);
         void remove(const Data & other);

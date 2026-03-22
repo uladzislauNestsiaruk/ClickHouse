@@ -28,6 +28,8 @@ struct SerializeFSSTState : public ISerialization::SerializeBinaryBulkState
 class SerializationStringFSST final : public ISerialization
 {
 public:
+    constexpr static size_t kCompressSize = 16 << 10; // 16KB
+    
     explicit SerializationStringFSST(SerializationPtr _nested)
         : nested(_nested)
     {
@@ -129,7 +131,6 @@ private:
     static const IColumn & resolveColumn(const IColumn & column, ColumnPtr & holder);
 
     SerializationPtr nested;
-    constexpr static size_t kCompressSize = 16 << 10; // 16KB
 };
 }
 

@@ -1,7 +1,3 @@
-#include <absl/debugging/stacktrace.h>
-#include <absl/debugging/symbolize.h>
-#include <Common/Logger.h>
-#include <Common/logger_useful.h>
 #ifdef ENABLE_FSST
 
 #    include <algorithm>
@@ -465,8 +461,6 @@ void SerializationStringFSST::deserializeBinaryBulkWithMultipleStreams(
 
         size_t strings;
         (void)offsets_stream->readBig(reinterpret_cast<char *>(&strings), sizeof(strings));
-
-        LOG_DEBUG(getLogger("fsst logger"), "going to deserialize {} strings", strings);
 
         states.back()->offsets.resize(strings);
         states.back()->origin_lengths.resize(strings);

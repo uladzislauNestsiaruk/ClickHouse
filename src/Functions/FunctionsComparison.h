@@ -4,7 +4,6 @@
 #include <Columns/ColumnArray.h>
 #include <Columns/ColumnConst.h>
 #include <Columns/ColumnDecimal.h>
-#include <Columns/ColumnFSST.h>
 #include <Columns/ColumnFixedString.h>
 #include <Columns/ColumnString.h>
 #include <Columns/ColumnTuple.h>
@@ -877,16 +876,13 @@ private:
         const ColumnString * c0_string = checkAndGetColumn<ColumnString>(c0);
         const ColumnString * c1_string = checkAndGetColumn<ColumnString>(c1);
 
-        const ColumnFSST * c0_fsst = checkAndGetColumn<ColumnFSST>(c0);
-        const ColumnFSST * c1_fsst = checkAndGetColumn<ColumnFSST>(c1);
-
         const ColumnFixedString * c0_fixed_string = checkAndGetColumn<ColumnFixedString>(c0);
         const ColumnFixedString * c1_fixed_string = checkAndGetColumn<ColumnFixedString>(c1);
 
         const ColumnConst * c0_const = checkAndGetColumnConstStringOrFixedString(c0);
         const ColumnConst * c1_const = checkAndGetColumnConstStringOrFixedString(c1);
 
-        if (!((c0_string || c0_fixed_string || c0_const || c0_fsst) && (c1_string || c1_fixed_string || c1_const || c1_fsst)))
+        if (!((c0_string || c0_fixed_string || c0_const) && (c1_string || c1_fixed_string || c1_const)))
             return nullptr;
 
         const ColumnString::Chars * c0_const_chars = nullptr;
@@ -1022,22 +1018,6 @@ private:
             T res;
             return !enum_values->tryGetValue(res, string_value.safeGet<String>());
         };
-
-        auto log_fsst = [&]()
-        {
-            LOG_DEBUG(
-                getLogger("fsst logger"),
-                "executeWithConstString left_const = {},"
-                "right_const={}, left_type == right_type is {}",
-                left_const == nullptr,
-                right_const == nullptr,
-                left_type == right_type);
-        };
-        if (typeid_cast<const ColumnFSST *>(col_left_untyped) || typeid_cast<const ColumnFSST *>(col_right_untyped))
-        {
-            log_fsst();
-            log_fsst();
-        }
 
         if (is_string_not_in_enum(typeid_cast<const DataTypeEnum8 *>(type_to_compare.get()))
             || is_string_not_in_enum(typeid_cast<const DataTypeEnum16 *>(type_to_compare.get())))
@@ -1454,34 +1434,6 @@ public:
         const bool right_is_ipv6 = which_right.isIPv6();
         const bool left_is_fixed_string = which_left.isFixedString();
         const bool right_is_fixed_string = which_right.isFixedString();
-
-        auto log_fsst = [&](const IColumn * col)
-        {
-            if (const auto * _ = typeid_cast<const ColumnFSST *>(col))
-            {
-                LOG_DEBUG(
-                    getLogger("fsst logger"),
-                    "executeImpl, is_num = {}, is_string = {}, is_float = {}, is_ipv4 = {}, is_ipv6 = {}, is_fixed_string = {}",
-                    left_is_num,
-                    left_is_string,
-                    left_is_float,
-                    left_is_ipv4,
-                    left_is_ipv6,
-                    left_is_fixed_string);
-                LOG_DEBUG(
-                    getLogger("fsst logger"),
-                    "executeImpl, is_num = {}, is_string = {}, is_float = {}, is_ipv4 = {}, is_ipv6 = {}, is_fixed_string = {}",
-                    right_is_num,
-                    right_is_string,
-                    right_is_float,
-                    right_is_ipv4,
-                    right_is_ipv6,
-                    right_is_fixed_string);
-            }
-        };
-
-        log_fsst(col_left_untyped);
-        log_fsst(col_right_untyped);
 
         size_t fixed_string_size = left_is_fixed_string
             ? assert_cast<const DataTypeFixedString &>(*left_type).getN()
