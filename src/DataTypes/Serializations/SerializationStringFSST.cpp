@@ -113,7 +113,6 @@ void serializeStates(std::vector<std::shared_ptr<SerializeFSSTState<true>>> stat
     }
 
     /* write data */
-
     settings.path.push_back(Substream::FsstOffsets);
     auto * offsets_stream = settings.getter(settings.path);
     for (size_t state_ind = 0; state_ind < states.size(); state_ind++)
@@ -259,43 +258,50 @@ const IColumn & SerializationStringFSST::resolveColumn(const IColumn & column, C
 void SerializationStringFSST::serializeBinary(
     const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
 {
-    ColumnPtr holder;
-    nested->serializeBinary(resolveColumn(column, holder), row_num, ostr, settings);
+    String out;
+    assert_cast<const ColumnFSST &>(column).decompressRow(row_num, out);
+    writeVarUInt(out.size(), ostr);
+    writeString(out, ostr);
 }
 
 void SerializationStringFSST::serializeTextEscaped(
     const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
 {
-    ColumnPtr holder;
-    nested->serializeTextEscaped(resolveColumn(column, holder), row_num, ostr, settings);
+    String out;
+    assert_cast<const ColumnFSST &>(column).decompressRow(row_num, out);
+    writeEscapedString(out, ostr);
 }
 
 void SerializationStringFSST::serializeTextQuoted(
     const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
 {
-    ColumnPtr holder;
-    nested->serializeTextQuoted(resolveColumn(column, holder), row_num, ostr, settings);
+    String out;
+    assert_cast<const ColumnFSST &>(column).decompressRow(row_num, out);
+    settings.values.escape_quote_with_quote ? writeQuotedStringPostgreSQL(out, ostr) : writeQuotedString(out, ostr);
 }
 
 void SerializationStringFSST::serializeTextCSV(
     const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
 {
-    ColumnPtr holder;
-    nested->serializeTextCSV(resolveColumn(column, holder), row_num, ostr, settings);
+    String out;
+    assert_cast<const ColumnFSST &>(column).decompressRow(row_num, out);
+    writeCSVString(out, ostr);
 }
 
 void SerializationStringFSST::serializeText(
-    const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
+    const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & /* settings */) const
 {
-    ColumnPtr holder;
-    nested->serializeText(resolveColumn(column, holder), row_num, ostr, settings);
+    String out;
+    assert_cast<const ColumnFSST &>(column).decompressRow(row_num, out);
+    writeString(out, ostr);
 }
 
 void SerializationStringFSST::serializeTextJSON(
     const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
 {
-    ColumnPtr holder;
-    nested->serializeTextJSON(resolveColumn(column, holder), row_num, ostr, settings);
+    String out;
+    assert_cast<const ColumnFSST &>(column).decompressRow(row_num, out);
+    writeJSONString(out, ostr, settings);
 }
 
 SerializationPtr SerializationStringFSST::SubcolumnCreator::create(const SerializationPtr & string_nested, const DataTypePtr &) const
@@ -502,27 +508,22 @@ void SerializationStringFSST::deserializeBinaryBulkWithMultipleStreams(
         {
             if (need_new_batch)
             {
-                column_fsst.appendNewBatch(
-                    current_field.value(), std::make_shared<fsst_decoder_t>(states[current_state]->getDecoder()));
+                column_fsst.appendNewBatch(current_field.value(), std::make_shared<fsst_decoder_t>(states[current_state]->getDecoder()));
                 need_new_batch = false;
             }
             else
-            {
                 column_fsst.append(current_field.value());
-            }
         }
         else
         {
             ++current_state;
             need_new_batch = true;
-            --rows_read; /// this iteration produced no row, retry with next state
+            --rows_read;
         }
     }
 
     if (current_state < states.size())
-    {
         state = states[current_state];
-    }
 }
 
 };

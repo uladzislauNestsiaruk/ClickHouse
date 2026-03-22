@@ -105,17 +105,52 @@ void ColumnFSST::popBack(size_t n)
     }
 }
 
-ColumnPtr ColumnFSST::convertToFullIfNeeded() const
+MutableColumnPtr ColumnFSST::decompressAll() const
 {
-    auto column_string = ColumnString::create();
-    for (size_t ind = 0; ind < size(); ind++)
+    const size_t n = size();
+    if (n == 0)
+        return ColumnString::create();
+
+    auto result = ColumnString::create();
+    auto & result_chars = result->getChars();
+    auto & result_offsets = result->getOffsets();
+
+    /* Pre-calculate total decompressed */
+    size_t total_bytes = 0;
+    for (size_t i = 0; i < n; ++i)
+        total_bytes += origin_lengths[i];
+
+    result_chars.resize(total_bytes);
+    result_offsets.resize(n);
+
+    /* Decompress batch by batch */
+    size_t write_pos = 0;
+    for (size_t batch_idx = 0; batch_idx < decoders.size(); ++batch_idx)
     {
-        String val;
-        decompressRow(ind, val);
-        column_string->insertData(val.data(), val.size());
+        size_t batch_start = decoders[batch_idx].batch_start_index;
+        size_t batch_end = (batch_idx + 1 < decoders.size()) ? decoders[batch_idx + 1].batch_start_index : n;
+        auto * decoder = reinterpret_cast<fsst_decoder_t *>(decoders[batch_idx].decoder.get());
+
+        for (size_t row = batch_start; row < batch_end; ++row)
+        {
+            auto compressed = string_column->getDataAt(row);
+            fsst_decompress(
+                decoder,
+                compressed.size(),
+                reinterpret_cast<const unsigned char *>(compressed.data()),
+                origin_lengths[row],
+                reinterpret_cast<unsigned char *>(&result_chars[write_pos]));
+            write_pos += origin_lengths[row];
+            result_offsets[row] = write_pos;
+        }
     }
 
-    return column_string;
+    return result;
+}
+
+ColumnPtr ColumnFSST::convertToFullIfNeeded() const
+{
+    return decompressAll();
 }
 
 void ColumnFSST::doInsertRangeFrom(const IColumn & src, size_t start, size_t length)
@@ -383,16 +418,8 @@ ColumnPtr recursiveRemoveFSST(const ColumnPtr & column)
         return column;
 
     if (const auto * column_fsst = typeid_cast<const ColumnFSST *>(column.get()))
-    {
-        auto column_string = ColumnString::create();
-        for (size_t ind = 0; ind < column_fsst->size(); ind++)
-        {
-            column_string->insert((*column_fsst)[ind]);
-        }
-        return column_string;
-    }
-
-    if (const auto * column_tuple = typeid_cast<const ColumnTuple *>(column.get()))
+        return column_fsst->convertToFullIfNeeded();
+    else if (const auto * column_tuple = typeid_cast<const ColumnTuple *>(column.get()))
     {
         auto columns = column_tuple->getColumns();
         if (columns.empty())

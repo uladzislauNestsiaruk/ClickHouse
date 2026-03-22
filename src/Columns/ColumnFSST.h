@@ -69,31 +69,33 @@ private:
 
     void filterInnerData(const Filter & filt, std::vector<UInt64> & lengths, std::vector<BatchDsc> & decoders) const;
 
-    void decompressRow(size_t row_num, String & out) const;
-
-public:
+    
+    MutableColumnPtr decompressAll() const;
+    
+    public:
     using Base = COWHelper<IColumnHelper<ColumnFSST>, ColumnFSST>;
     static Ptr create(const ColumnPtr & nested) { return Base::create(nested->assumeMutable()); }
     static Ptr create(ColumnPtr && nested, std::vector<BatchDsc> decoders, std::vector<UInt64> origin_lengths)
     {
         return Base::create(std::move(nested), std::move(decoders), std::move(origin_lengths));
     }
-
+    
     ColumnFSST(ColumnPtr && _nested, std::vector<BatchDsc> _decoders, std::vector<UInt64> _origin_lengths)
-        : string_column(std::move(_nested))
-        , origin_lengths(std::move(_origin_lengths))
-        , decoders(std::move(_decoders))
+    : string_column(std::move(_nested))
+    , origin_lengths(std::move(_origin_lengths))
+    , decoders(std::move(_decoders))
     {
     }
-
+    
     std::string getName() const override { return fmt::format("{}(FSST)", string_column->getName()); }
     const char * getFamilyName() const override { return string_column->getFamilyName(); }
     TypeIndex getDataType() const override { return string_column->getDataType(); }
-
+    
     [[nodiscard]] size_t size() const override { return string_column->size(); }
-
+    
     [[nodiscard]] Field operator[](size_t n) const override;
     void get(size_t n, Field & res) const override;
+    void decompressRow(size_t row_num, String & out) const;
 
     ColumnPtr convertToFullIfNeeded() const override;
 
