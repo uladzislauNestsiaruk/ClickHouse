@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Columns/ColumnFSST.h>
 #include <Columns/ColumnNullable.h>
 #include <Columns/ColumnReplicated.h>
 #include <Core/Defines.h>
@@ -287,13 +288,21 @@ private:
             if (const auto * column_replicated = typeid_cast<const ColumnReplicated *>(dest_column))
                 dest_column = column_replicated->getNestedColumn().get();
 
+            /// ColumnFSST is a compressed ColumnString; treat them as compatible for insertFrom.
+            const IColumn * effective_from = column_from_block;
+            const IColumn * effective_dest = dest_column;
+            if (typeid_cast<const ColumnFSST *>(effective_from))
+                effective_from = typeid_cast<const ColumnFSST *>(effective_from)->getStringColumn().get();
+            if (typeid_cast<const ColumnFSST *>(effective_dest))
+                effective_dest = typeid_cast<const ColumnFSST *>(effective_dest)->getStringColumn().get();
+
             /** Using dest_column->structureEquals(*column_from_block) will not work for low cardinality columns,
               * because dictionaries can be different, while calling insertFrom on them is safe, for example:
               * ColumnLowCardinality(size = 0, UInt8(size = 0), ColumnUnique(size = 1, String(size = 1)))
               * and
               * ColumnLowCardinality(size = 0, UInt16(size = 0), ColumnUnique(size = 1, String(size = 1)))
               */
-            if (typeid(*dest_column) != typeid(*column_from_block))
+            if (typeid(*effective_dest) != typeid(*effective_from))
                 throw Exception(ErrorCodes::LOGICAL_ERROR, "Columns {} and {} have different types {} and {}",
                                 dest_column->getName(), column_from_block->getName(),
                                 demangle(typeid(*dest_column).name()), demangle(typeid(*column_from_block).name()));

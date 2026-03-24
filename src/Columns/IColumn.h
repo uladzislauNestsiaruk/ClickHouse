@@ -813,6 +813,8 @@ public:
 
     [[nodiscard]] virtual bool isSparse() const { return false; }
 
+    [[nodiscard]] virtual bool isFSST() const { return false; }
+
     [[nodiscard]] virtual bool isReplicated() const { return false; }
 
     [[nodiscard]] virtual bool isConst() const { return false; }
@@ -867,7 +869,7 @@ private:
         /// For Sparse and Const columns, we can compare only internal types. It is considered normal to e.g. insert from normal vector column to a sparse vector column.
         /// This case is specifically handled in ColumnSparse implementation. Similar situation with Const column.
         /// For the rest of column types we can compare the types directly.
-        chassert((isConst() || isSparse() || isReplicated()) ? getDataType() == rhs.getDataType() : typeid(*this) == typeid(rhs));
+        chassert((isConst() || isSparse() || isReplicated() || isFSST() || rhs.isFSST()) ? getDataType() == rhs.getDataType() : typeid(*this) == typeid(rhs));
     }
 #endif
 };

@@ -1,4 +1,5 @@
 #include <Columns/ColumnString.h>
+#include <Columns/ColumnFSST.h>
 
 #include <Columns/Collator.h>
 #include <Columns/ColumnsCommon.h>
@@ -601,6 +602,11 @@ void ColumnString::shrinkToFit()
 {
     chars.shrink_to_fit();
     offsets.shrink_to_fit();
+}
+
+bool ColumnString::structureEquals(const IColumn & rhs) const
+{
+    return typeid(rhs) == typeid(ColumnString) || typeid(rhs) == typeid(ColumnFSST);
 }
 
 void ColumnString::getExtremes(Field & min, Field & max, size_t start, size_t end) const

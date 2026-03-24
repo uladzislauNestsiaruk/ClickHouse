@@ -224,6 +224,11 @@ ColumnPtr ColumnFSST::createSizeSubcolumn() const
     return column_sizes;
 }
 
+std::string_view ColumnFSST::getDataAt(size_t n) const
+{
+    return getDecompressed()->getDataAt(n);
+}
+
 bool ColumnFSST::isDefaultAt(size_t n) const
 {
     return string_column->isDefaultAt(n);

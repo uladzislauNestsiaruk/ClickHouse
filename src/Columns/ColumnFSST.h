@@ -50,6 +50,7 @@ private:
     WrappedPtr string_column;
     std::vector<UInt64> origin_lengths;
     std::vector<BatchDsc> decoders;
+    mutable ColumnPtr decompressed_cache;
 
     explicit ColumnFSST(MutableColumnPtr && _string_column)
         : string_column(std::move(_string_column))
@@ -85,11 +86,18 @@ public:
     {
     }
 
-    std::string getName() const override { return fmt::format("{}(FSST)", string_column->getName()); }
+    std::string getName() const override { return string_column->getName(); }
     const char * getFamilyName() const override { return string_column->getFamilyName(); }
     TypeIndex getDataType() const override { return string_column->getDataType(); }
 
     [[nodiscard]] size_t size() const override { return string_column->size(); }
+
+    [[nodiscard]] bool isFSST() const override { return true; }
+
+    bool structureEquals(const IColumn & rhs) const override
+    {
+        return typeid(rhs) == typeid(ColumnFSST) || typeid(rhs) == typeid(ColumnString);
+    }
 
     [[nodiscard]] Field operator[](size_t n) const override;
     void get(size_t n, Field & res) const override;
@@ -103,7 +111,7 @@ public:
         full->getValueNameImpl(name_buf, n, options);
     }
 
-    [[nodiscard]] std::string_view getDataAt(size_t) const override { throwNotSupported(); }
+    [[nodiscard]] std::string_view getDataAt(size_t n) const override;
     [[nodiscard]] bool isDefaultAt(size_t n) const override;
 
     /*
@@ -183,6 +191,13 @@ public:
     WrappedPtr getStringColumn() const { return string_column; }
     const std::vector<BatchDsc> & getDecoders() const { return decoders; }
     const std::vector<UInt64> & getLengths() const { return origin_lengths; }
+
+    ColumnPtr getDecompressed() const
+    {
+        if (!decompressed_cache)
+            decompressed_cache = decompressAll();
+        return decompressed_cache;
+    }
 
     ColumnPtr createSizeSubcolumn() const;
 

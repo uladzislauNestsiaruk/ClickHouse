@@ -6,6 +6,7 @@
 #include <Columns/ColumnConst.h>
 #include <Columns/ColumnFixedString.h>
 #include <Columns/ColumnNullable.h>
+#include <Columns/ColumnFSST.h>
 #include <Columns/ColumnSparse.h>
 #include <Columns/ColumnString.h>
 #include <Common/CurrentThread.h>
@@ -90,8 +91,9 @@ Block materializeColumnsFromRightBlock(Block block, const Block & sample_block, 
             const auto * replicated_column = typeid_cast<const ColumnReplicated *>(actual_column.get());
             if (replicated_column)
                 actual_column = replicated_column->getNestedColumn();
-            /// Sparse columns are not supported on the right side.
+            /// Sparse and FSST columns are not supported on the right side.
             actual_column = recursiveRemoveSparse(actual_column);
+            actual_column = recursiveRemoveFSST(actual_column);
 
             if (actual_column->lowCardinality() && !sample_column.column->lowCardinality())
             {

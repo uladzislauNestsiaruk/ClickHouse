@@ -355,6 +355,8 @@ Chunk Squashing::squash(ChunksWithOffsetsAndLengths && input_data)
             /// Need to check if there are any sparse columns in subcolumns,
             /// since `IColumn::isSparse` is not recursive but sparse column can be inside a tuple, for example.
             have_same_serialization[col_ind] &= columns[col_ind]->structureEquals(*mutable_columns[col_ind]);
+            /// ColumnFSST is structurally equal to ColumnString but needs conversion for squashing.
+            have_same_serialization[col_ind] &= !columns[col_ind]->isFSST() && !mutable_columns[col_ind]->isFSST();
             source_columns_list[col_ind].emplace_back(std::move(columns[col_ind]));
         }
     }
