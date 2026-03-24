@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_set>
+
 #include <Core/NamesAndTypes.h>
 #include <Storages/MergeTree/IMergeTreeReader.h>
 #include <IO/ReadBufferFromFileBase.h>
@@ -97,6 +99,11 @@ protected:
     /// by seeking to the required substream during deserialization. To avoid seeks back in the file
     /// we deserialize subcolumns of the same column in the order of their serialization.
     std::unordered_map<String, std::vector<size_t>> subcolumns_deserialization_order;
+
+    /// Subcolumns whose parent serialization does not support direct substream reading
+    /// (e.g. FSST columns where "size" subcolumn is virtual). These must use the fallback
+    /// path: read the full parent column and extract the subcolumn in memory.
+    std::unordered_set<size_t> subcolumns_needing_fallback_read;
 
     DeserializationPrefixesCache * deserialization_prefixes_cache;
     DeserializeBinaryBulkStateMap cached_subcolumn_prefixes;

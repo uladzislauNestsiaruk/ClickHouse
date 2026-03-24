@@ -430,7 +430,7 @@ if (TARGET ch_contrib::llvm)
 endif ()
 
 if (TARGET ch_contrib::fsst)
-    target_link_libraries(dbms PRIVATE ch_contrib::fsst)
+    target_link_libraries(dbms PUBLIC ch_contrib::fsst)
     target_link_libraries(clickhouse_compression PRIVATE ch_contrib::fsst)
 endif()
 

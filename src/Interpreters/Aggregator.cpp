@@ -13,6 +13,7 @@
 #include <AggregateFunctions/Combinators/AggregateFunctionArray.h>
 #include <AggregateFunctions/Combinators/AggregateFunctionState.h>
 #include <Columns/ColumnAggregateFunction.h>
+#include <Columns/ColumnFSST.h>
 #include <Columns/ColumnSparse.h>
 #include <Columns/ColumnTuple.h>
 #include <Compression/CompressedWriteBuffer.h>
@@ -1707,6 +1708,7 @@ void Aggregator::prepareAggregateInstructions(
                 ? aggregate_columns[i][j]->getPtr()
                 : recursiveRemoveSparse(aggregate_columns[i][j]->getPtr());
 
+            full_column = recursiveRemoveFSST(full_column);
             full_column = recursiveRemoveLowCardinality(full_column);
             if (full_column.get() != aggregate_columns[i][j])
             {

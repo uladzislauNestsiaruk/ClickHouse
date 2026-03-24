@@ -10,6 +10,7 @@
 
 #    include <Columns/ColumnFSST.h>
 #    include <Columns/ColumnTuple.h>
+#    include <Columns/ColumnsNumber.h>
 #    include <Columns/ColumnsCommon.h>
 #    include <Core/Field.h>
 #    include <base/types.h>
@@ -206,6 +207,21 @@ size_t ColumnFSST::byteSizeAt(size_t n) const
 size_t ColumnFSST::allocatedBytes() const
 {
     return byteSize();
+}
+
+ColumnPtr ColumnFSST::createSizeSubcolumn() const
+{
+    auto column_sizes = ColumnUInt64::create();
+    size_t rows = origin_lengths.size();
+    if (rows == 0)
+        return column_sizes;
+
+    auto & sizes_data = column_sizes->getData();
+    sizes_data.resize(rows);
+    for (size_t i = 0; i < rows; ++i)
+        sizes_data[i] = origin_lengths[i];
+
+    return column_sizes;
 }
 
 bool ColumnFSST::isDefaultAt(size_t n) const

@@ -15,7 +15,7 @@
 #include <Common/PODArray.h>
 #include <Common/WeakHash.h>
 
-#include <fsst.h>
+#include <fsst_fwd.h>
 
 namespace DB
 {
@@ -56,36 +56,41 @@ private:
     {
     }
 
-    ColumnFSST(const ColumnFSST &) { throwNotImplemented(); }
+    ColumnFSST(const ColumnFSST & other)
+        : string_column(other.clone())
+        , origin_lengths(other.origin_lengths)
+        , decoders(other.decoders)
+    {
+    }
 
     std::optional<size_t> batchByRow(size_t row) const;
 
     void filterInnerData(const Filter & filt, std::vector<UInt64> & lengths, std::vector<BatchDsc> & decoders) const;
 
-    
+
     MutableColumnPtr decompressAll() const;
-    
-    public:
+
+public:
     using Base = COWHelper<IColumnHelper<ColumnFSST>, ColumnFSST>;
     static Ptr create(const ColumnPtr & nested) { return Base::create(nested->assumeMutable()); }
     static Ptr create(ColumnPtr && nested, std::vector<BatchDsc> decoders, std::vector<UInt64> origin_lengths)
     {
         return Base::create(std::move(nested), std::move(decoders), std::move(origin_lengths));
     }
-    
+
     ColumnFSST(ColumnPtr && _nested, std::vector<BatchDsc> _decoders, std::vector<UInt64> _origin_lengths)
-    : string_column(std::move(_nested))
-    , origin_lengths(std::move(_origin_lengths))
-    , decoders(std::move(_decoders))
+        : string_column(std::move(_nested))
+        , origin_lengths(std::move(_origin_lengths))
+        , decoders(std::move(_decoders))
     {
     }
-    
+
     std::string getName() const override { return fmt::format("{}(FSST)", string_column->getName()); }
     const char * getFamilyName() const override { return string_column->getFamilyName(); }
     TypeIndex getDataType() const override { return string_column->getDataType(); }
-    
+
     [[nodiscard]] size_t size() const override { return string_column->size(); }
-    
+
     [[nodiscard]] Field operator[](size_t n) const override;
     void get(size_t n, Field & res) const override;
     void decompressRow(size_t row_num, String & out) const;
@@ -133,16 +138,10 @@ private:
     [[nodiscard]] ColumnPtr filter(const Filter & filt, ssize_t result_size_hint) const override;
     void filter(const Filter & filt) override;
 
-    /* also need to implement compress logic in ColumnFSST */
     void expand(const Filter & /*mask*/, bool /*inverted*/) override { throwNotSupported(); }
 
-    /* batches have no sense after reordering */
-    [[nodiscard]] ColumnPtr permute(const Permutation & /* perm */, size_t /* limit */) const override { throwNotSupported(); }
-    /*
-        Compression ratio can become extremely bad because the decoders were built
-        based on how often symbol sequences appear in the current column state.
-    */
-    [[nodiscard]] ColumnPtr index(const IColumn & /* indexes */, size_t /* limit */) const override { throwNotSupported(); }
+    [[nodiscard]] ColumnPtr permute(const Permutation & perm, size_t limit) const override { return decompressAll()->permute(perm, limit); }
+    [[nodiscard]] ColumnPtr index(const IColumn & indexes, size_t limit) const override { return decompressAll()->index(indexes, limit); }
 
     void getPermutation(
         PermutationSortDirection direction,
@@ -167,16 +166,11 @@ private:
     [[nodiscard]] size_t byteSizeAt(size_t) const override;
     [[nodiscard]] size_t allocatedBytes() const override;
 
-    /// Delegate default-row detection to the inner string column.
-    /// The compressed representation preserves default semantics (empty string → empty compressed).
     [[nodiscard]] double getRatioOfDefaultRows(double sample_ratio) const override
     {
         return string_column->getRatioOfDefaultRows(sample_ratio);
     }
-    [[nodiscard]] UInt64 getNumberOfDefaultRows() const override
-    {
-        return string_column->getNumberOfDefaultRows();
-    }
+    [[nodiscard]] UInt64 getNumberOfDefaultRows() const override { return string_column->getNumberOfDefaultRows(); }
     void getIndicesOfNonDefaultRows(Offsets & indices, size_t from, size_t limit) const override
     {
         string_column->getIndicesOfNonDefaultRows(indices, from, limit);
@@ -190,16 +184,12 @@ private:
     const std::vector<BatchDsc> & getDecoders() const { return decoders; }
     const std::vector<UInt64> & getLengths() const { return origin_lengths; }
 
+    ColumnPtr createSizeSubcolumn() const;
+
     void getExtremes(Field & min, Field & max, size_t start, size_t end) const override;
 
     void append(const CompressedField & x);
     void appendNewBatch(const CompressedField & x, std::shared_ptr<fsst_decoder_t> decoder);
-
-    [[noreturn]] static void throwNotImplemented()
-    {
-        throw Exception(
-            ErrorCodes::NOT_IMPLEMENTED, "text escaped/text quoted/text csv/whole text/json serialization are not implemented for FSST");
-    }
 
     [[noreturn]] static void throwNotSupported() { throw Exception(ErrorCodes::LOGICAL_ERROR, "functionality is not supported for FSST"); }
 };

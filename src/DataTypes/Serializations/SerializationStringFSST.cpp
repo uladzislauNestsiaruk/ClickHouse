@@ -9,7 +9,9 @@
 
 #    include <Columns/ColumnFSST.h>
 #    include <Columns/IColumn_fwd.h>
+#    include <DataTypes/DataTypesNumber.h>
 #    include <DataTypes/Serializations/SerializationStringFSST.h>
+#    include <DataTypes/Serializations/SerializationStringSize.h>
 #    include <IO/WriteBuffer.h>
 #    include <base/types.h>
 #    include <Common/Exception.h>
@@ -311,15 +313,33 @@ ColumnPtr SerializationStringFSST::SubcolumnCreator::create(const ColumnPtr & pr
 }
 
 void SerializationStringFSST::enumerateStreams(
-    EnumerateStreamsSettings & settings, const StreamCallback & callback, const SubstreamData & /*data*/) const
+    EnumerateStreamsSettings & settings, const StreamCallback & callback, const SubstreamData & data) const
 {
-    // fsst stream
-    settings.path.push_back(Substream::Fsst);
+    if (settings.enumerate_virtual_streams)
+    {
+        const auto * column_fsst = data.column ? typeid_cast<const ColumnFSST *>(data.column.get()) : nullptr;
+        ColumnPtr sizes_column;
+        if (column_fsst)
+            sizes_column = column_fsst->createSizeSubcolumn();
+
+        auto sizes_serialization = std::make_shared<SerializationStringSize>(MergeTreeStringSerializationVersion::SINGLE_STREAM);
+
+        settings.path.push_back(Substream::InlinedStringSizes);
+        settings.path.back().data = SubstreamData(sizes_serialization)
+                                        .withType(data.type ? std::make_shared<DataTypeUInt64>() : nullptr)
+                                        .withColumn(std::move(sizes_column))
+                                        .withSerializationInfo(data.serialization_info);
+        callback(settings.path);
+        settings.path.pop_back();
+    }
+
+    // compressed strings offsets stream (must match serializeStates order)
+    settings.path.push_back(Substream::FsstOffsets);
     callback(settings.path);
     settings.path.pop_back();
 
-    // compressed strings offsets stream
-    settings.path.push_back(Substream::FsstOffsets);
+    // fsst decoder stream
+    settings.path.push_back(Substream::Fsst);
     callback(settings.path);
     settings.path.pop_back();
 
@@ -413,9 +433,13 @@ void SerializationStringFSST::serializeBinaryBulkWithMultipleStreams(
     limit = limit == 0 || limit + offset > column.size() ? column.size() - offset : limit;
     if (limit == 0)
     {
-        settings.path.push_back(Substream::Fsst);
+        /// Order must match serializeStates: FsstOffsets, Fsst, FsstCompressed.
+        /// This is critical for compact parts with substream marks, where
+        /// initColumnsSubstreamsIfNeeded calls this with 0 rows to determine
+        /// substream positions that must match the actual mark write order.
+        settings.path.push_back(Substream::FsstOffsets);
         settings.getter(settings.path);
-        settings.path.back() = Substream::FsstOffsets;
+        settings.path.back() = Substream::Fsst;
         settings.getter(settings.path);
         settings.path.back() = Substream::FsstCompressed;
         settings.getter(settings.path);

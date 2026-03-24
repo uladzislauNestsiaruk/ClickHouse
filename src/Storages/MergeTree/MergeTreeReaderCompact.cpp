@@ -186,13 +186,13 @@ void MergeTreeReaderCompact::readData(
     const auto & name_and_type = columns_to_read[column_idx];
     const auto [name, type] = name_and_type;
 
-    bool seek_to_substream_mark = name_and_type.isSubcolumn() && has_substream_marks;
+    bool use_direct_substream = name_and_type.isSubcolumn() && has_substream_marks && !subcolumns_needing_fallback_read.contains(column_idx);
     auto buffer_getter = [&](const ISerialization::SubstreamPath & substream_path) -> ReadBuffer *
     {
         if (needSkipStream(column_idx, substream_path))
             return nullptr;
 
-        if (seek_to_substream_mark)
+        if (use_direct_substream)
         {
             size_t substream_position = columns_substreams.getSubstreamPosition(*column_positions[column_idx], name_and_type, substream_path, storage_settings);
             stream.seekToMarkAndColumn(from_mark, substream_position);
@@ -250,7 +250,8 @@ void MergeTreeReaderCompact::readData(
 
         if (name_and_type.isSubcolumn())
         {
-            if (has_substream_marks)
+            bool use_direct_substream_read = has_substream_marks && !subcolumns_needing_fallback_read.contains(column_idx);
+            if (use_direct_substream_read)
             {
                 const auto & serialization = serializations[column_idx];
                 serialization->deserializeBinaryBulkWithMultipleStreams(column, rows_offset, rows_to_read, deserialize_settings, deserialize_binary_bulk_state_map_for_subcolumns[name], substreams_cache);
@@ -265,8 +266,26 @@ void MergeTreeReaderCompact::readData(
 
                 if (!temp_full_column)
                 {
+                    /// When has_substream_marks is true but we're falling back to reading the
+                    /// full parent column (e.g. FSST doesn't support direct subcolumn reading),
+                    /// we must seek to each of the parent column's substream positions individually.
+                    NameAndTypePair full_column_ntp(name_in_storage, type_in_storage);
+                    auto saved_getter = deserialize_settings.getter;
+                    if (has_substream_marks && column_positions[column_idx])
+                    {
+                        deserialize_settings.getter = [&](const ISerialization::SubstreamPath & substream_path) -> ReadBuffer *
+                        {
+                            size_t substream_position = columns_substreams.getSubstreamPosition(
+                                *column_positions[column_idx], full_column_ntp, substream_path, storage_settings);
+                            stream.seekToMarkAndColumn(from_mark, substream_position);
+                            return stream.getDataBuffer();
+                        };
+                    }
+
                     temp_full_column = type_in_storage->createColumn(*serialization);
                     serialization->deserializeBinaryBulkWithMultipleStreams(temp_full_column, rows_offset, rows_to_read, deserialize_settings, deserialize_binary_bulk_state_map_for_subcolumns[name_in_storage], substreams_cache);
+
+                    deserialize_settings.getter = saved_getter;
 
                     if (columns_cache_for_subcolumns)
                         columns_cache_for_subcolumns->emplace(name_in_storage, temp_full_column);
@@ -366,9 +385,35 @@ void MergeTreeReaderCompact::initSubcolumnsDeserializationOrder()
         std::unordered_map<size_t, size_t> subcolumn_data_index_to_subcolumn_index;
         subcolumn_data_index_to_subcolumn_index.reserve(subcolumns_indexes.size());
         auto column_from_part = part_columns.getColumn(GetColumnsOptions::All, column);
+
+        /// Check if the parent column's serialization uses a kind (e.g. FSST) that
+        /// does not store subcolumn substreams on disk. Such subcolumns must be read
+        /// via the fallback path (read full parent column, extract subcolumn in memory).
+        bool parent_has_unsupported_substreams = false;
+        {
+            auto parent_it = serializations_of_full_columns.find(column);
+            if (parent_it != serializations_of_full_columns.end())
+            {
+                for (auto kind : parent_it->second->getKindStack())
+                {
+                    if (kind == ISerialization::Kind::FSST)
+                    {
+                        parent_has_unsupported_substreams = true;
+                        break;
+                    }
+                }
+            }
+        }
+
         for (size_t index : subcolumns_indexes)
         {
-            if (column_from_part.type->hasSubcolumn(columns_to_read[index].getSubcolumnName()))
+            if (parent_has_unsupported_substreams)
+            {
+                /// FSST (and similar) subcolumns need the fallback read path.
+                non_existing_subcolumns_indexes.push_back(index);
+                subcolumns_needing_fallback_read.insert(index);
+            }
+            else if (column_from_part.type->hasSubcolumn(columns_to_read[index].getSubcolumnName()))
             {
                 subcolumns_data.push_back(ISerialization::SubstreamData(serializations[index])
                                           .withType(columns_to_read[index].type)
@@ -408,13 +453,13 @@ void MergeTreeReaderCompact::readPrefix(size_t column_idx, size_t from_mark, Mer
     const auto & column = columns_to_read[column_idx];
     auto name_in_storage = column.getNameInStorage();
 
-    bool seek_to_substream_mark = column.isSubcolumn() && has_substream_marks;
+    bool use_direct_substream = column.isSubcolumn() && has_substream_marks && !subcolumns_needing_fallback_read.contains(column_idx);
     auto buffer_getter = [&](const ISerialization::SubstreamPath & substream_path) -> ReadBuffer *
     {
         if (needSkipStream(column_idx, substream_path))
             return nullptr;
 
-        if (seek_to_substream_mark)
+        if (use_direct_substream)
         {
             size_t substream_position = columns_substreams.getSubstreamPosition(*column_positions[column_idx], column, substream_path, storage_settings);
             stream.seekToMarkAndColumn(from_mark, substream_position);
@@ -425,28 +470,50 @@ void MergeTreeReaderCompact::readPrefix(size_t column_idx, size_t from_mark, Mer
 
     if (column.isSubcolumn())
     {
-        if (has_substream_marks)
+        bool use_direct_substream_read = use_direct_substream;
+        if (use_direct_substream_read)
         {
             const auto & serialization = serializations[column_idx];
             auto & state = deserialize_binary_bulk_state_map_for_subcolumns[column.name];
-            readPrefix(column, serialization, state, buffer_getter, seek_to_substream_mark ? cache : nullptr);
+            readPrefix(column, serialization, state, buffer_getter, use_direct_substream ? cache : nullptr);
         }
         else
         {
-            /// If we don't have substream marks we deserialize the whole column once and extract subcolumns in memory.
+            /// If we don't have substream marks (or the parent serialization doesn't support
+            /// direct subcolumn reading, e.g. FSST), deserialize the whole column once and
+            /// extract subcolumns in memory.
             if (deserialize_binary_bulk_state_map_for_subcolumns.contains(name_in_storage))
                 return;
 
             const auto & serialization = serializations_of_full_columns.at(name_in_storage);
             auto & state = deserialize_binary_bulk_state_map_for_subcolumns[name_in_storage];
-            readPrefix(column, serialization, state, buffer_getter, nullptr);
+
+            /// When has_substream_marks is true but the parent serialization doesn't support
+            /// direct subcolumn reading (e.g. FSST), seek to each of the parent column's
+            /// substream positions for the prefix deserialization.
+            if (has_substream_marks && column_positions[column_idx])
+            {
+                NameAndTypePair full_column_ntp(name_in_storage, column.getTypeInStorage());
+                auto full_column_buffer_getter = [&](const ISerialization::SubstreamPath & substream_path) -> ReadBuffer *
+                {
+                    size_t substream_position = columns_substreams.getSubstreamPosition(
+                        *column_positions[column_idx], full_column_ntp, substream_path, storage_settings);
+                    stream.seekToMarkAndColumn(from_mark, substream_position);
+                    return stream.getDataBuffer();
+                };
+                readPrefix(column, serialization, state, full_column_buffer_getter, nullptr);
+            }
+            else
+            {
+                readPrefix(column, serialization, state, buffer_getter, nullptr);
+            }
         }
     }
     else
     {
         const auto & serialization = serializations[column_idx];
         auto & state = deserialize_binary_bulk_state_map[column.name];
-        readPrefix(column, serialization, state, buffer_getter, seek_to_substream_mark ? cache : nullptr);
+        readPrefix(column, serialization, state, buffer_getter, use_direct_substream ? cache : nullptr);
     }
 }
 

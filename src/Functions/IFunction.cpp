@@ -7,6 +7,7 @@
 #include <Columns/ColumnNullable.h>
 #include <Columns/ColumnSparse.h>
 #include <Columns/ColumnReplicated.h>
+#include <Columns/ColumnFSST.h>
 #include <Columns/ColumnsCommon.h>
 #include <Core/Block.h>
 #include <Core/Settings.h>
@@ -374,6 +375,12 @@ ColumnPtr IExecutableFunction::executeWithoutLowCardinalityColumns(
     return res;
 }
 
+static void convertFSSTColumnsToFull(ColumnsWithTypeAndName & args)
+{
+    for (auto & column : args)
+        column.column = recursiveRemoveFSST(column.column);
+}
+
 static void convertSparseColumnsToFull(ColumnsWithTypeAndName & args)
 {
     for (auto & column : args)
@@ -453,6 +460,9 @@ ColumnPtr IExecutableFunction::execute(
 {
     checkFunctionArgumentSizes(arguments, input_rows_count);
 
+    auto args = arguments;
+    convertFSSTColumnsToFull(args);
+
     if (useDefaultImplementationForReplicatedColumns())
     {
         /// If we have only constants and replicated columns with the same indexes
@@ -462,7 +472,8 @@ ColumnPtr IExecutableFunction::execute(
         ColumnPtr common_replicated_indexes;
         Columns nested_columns;
         bool has_full_columns = false;
-        for (const auto & argument : arguments)
+        size_t nested_column_size = 0;
+        for (const auto & argument : args)
         {
             argument_types.push_back({argument.type, isColumnConst(*argument.column)});
             if (const auto * column_replicated = typeid_cast<const ColumnReplicated *>(argument.column.get()))
@@ -483,7 +494,7 @@ ColumnPtr IExecutableFunction::execute(
             }
         }
 
-        auto arguments_without_replicated = arguments;
+        auto arguments_without_replicated = args;
         if (has_full_columns || !common_replicated_indexes)
         {
             convertReplicatedColumnsToFull(arguments_without_replicated);
@@ -520,7 +531,7 @@ ColumnPtr IExecutableFunction::execute(
         return result->index(*common_replicated_indexes, 0);
     }
 
-    return executeWithoutReplicatedColumns(arguments, result_type, input_rows_count, dry_run);
+    return executeWithoutReplicatedColumns(args, result_type, input_rows_count, dry_run);
 }
 
 ColumnPtr IExecutableFunction::executeWithoutReplicatedColumns(
