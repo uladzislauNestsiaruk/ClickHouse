@@ -1,0 +1,24 @@
+fsst_check	category	FSST
+fsst_check	message	FSST
+eq_filter	1000
+range_filter	2000
+like_filter	250
+in_filter	2000
+order_first	category_0	0
+order_first	category_0	5
+order_first	category_0	10
+order_last	category_4	4999
+order_last	category_4	4994
+order_last	category_4	4989
+distinct	5
+group_by	category_0	1000
+group_by	category_1	1000
+group_by	category_2	1000
+group_by	category_3	1000
+group_by	category_4	1000
+join	category_0	1	1000
+join	category_1	2	1000
+join	category_2	3	1000
+join	category_3	4	1000
+join	category_4	5	1000
+subquery	5000

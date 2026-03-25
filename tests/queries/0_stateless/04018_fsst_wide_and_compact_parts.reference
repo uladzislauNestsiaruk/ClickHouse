@@ -1,0 +1,13 @@
+compact_type	Compact
+compact_fsst	FSST
+compact_count	2000
+compact_sample	Compact part message #42 with repeated padding: compact_data compact_data compact_data compact_data compact_data
+1
+wide_type	Wide
+wide_fsst	FSST
+wide_count	2000
+wide_sample	Wide part message #42 with repeated padding: wide_format_data wide_format_data wide_format_data wide_format_data wide_format_data
+1
+wide_merged_count	4000
+wide_merged_sample	Wide part 2 message #3000 with different padding: second_part_data second_part_data second_part_data second_part_data second_part_data
+1

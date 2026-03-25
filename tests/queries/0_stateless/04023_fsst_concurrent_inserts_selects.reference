@@ -1,0 +1,12 @@
+fsst_check	batch	FSST	10
+fsst_check	data	FSST	10
+pre_count	5000
+pre_batches	10
+pre_checksum	16343226147498603159
+post_count	5000
+post_batches	10
+post_checksum	16343226147498603159
+batch1_row	Data from batch 01, row 0 padding=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+batch5_row	Data from batch 05, row 2000 padding=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+batch10_row	Data from batch 10, row 4999 padding=ggggggggggggggggggggggggggggg
+final_parts	1

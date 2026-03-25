@@ -1,0 +1,19 @@
+fsst_check	FSST
+length	1	1
+empty	0
+notEmpty	1
+upper	1
+substring	Event type
+position	1
+startsWith	1
+endsWith	1
+like	200
+match	2000
+reverse	1
+replaceOne	1
+concat	1
+cityHash64	1
+sipHash64	1
+min_max	1
+uniq	1
+groupArray	1

@@ -1,0 +1,20 @@
+pw_fsst	category	FSST
+pw_fsst	payload	FSST
+prewhere_count	500
+prewhere_sample	0	category_group_0
+prewhere_sample	20	category_group_0
+prewhere_sample	40	category_group_0
+pk_fsst	data	FSST
+pk_fsst	event_type	FSST
+pk_fsst	tenant	FSST
+pk_lookup	200
+pk_range	2000
+pk_sample	tenant_0_longname	event_0_type_name	0
+pk_sample	tenant_0_longname	event_0_type_name	50
+pk_sample	tenant_0_longname	event_0_type_name	100
+idx_fsst	message	FSST
+idx_fsst	tag	FSST
+set_idx	200
+bloom_idx	3334
+minmax_idx	200
+1

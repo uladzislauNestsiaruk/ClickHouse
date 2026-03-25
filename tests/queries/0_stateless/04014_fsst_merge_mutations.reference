@@ -1,0 +1,18 @@
+fsst_before	msg	FSST
+fsst_before	tag	FSST
+parts_before	3
+count_before	3000
+fsst_after_merge	msg	FSST
+fsst_after_merge	tag	FSST
+parts_after	1
+count_after	3000
+row_0	Message part1 row=0 data=aaaaaaaaaa
+row_2999	Message part3 row=2999 data=cccccccccc
+row_1000	Message part2 row=1000 data=bbbbbbbbbb
+sorted_check	0
+after_update	Message part1 row=0 data=aaaaaaaaaa [UPDATED]
+update_count	3
+after_delete	2500
+after_add_col	2500	2500
+after_drop_col	2500
+remaining_data	Message part1 row=500 data=aaaaaaaaaa

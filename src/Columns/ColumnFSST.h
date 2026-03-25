@@ -137,7 +137,7 @@ public:
 
     void popBack(size_t n) override;
 
-    MutableColumnPtr cloneEmpty() const override { return create(ColumnString::create())->assumeMutable(); }
+    MutableColumnPtr cloneEmpty() const override { return ColumnString::create(); }
 
     void updateHashWithValue(size_t n, SipHash & hash) const override;
     WeakHash32 getWeakHash32() const override;

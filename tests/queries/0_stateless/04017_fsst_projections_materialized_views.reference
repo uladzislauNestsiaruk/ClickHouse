@@ -1,0 +1,9 @@
+proj_fsst	category	FSST
+proj_fsst	message	FSST
+proj_count	5000
+proj_sample	Event log: operation=READ resource=/api/v1/data/100 user=user_0 timestamp=2025-03-17
+proj_query	cat_5_padding_text	500
+mv_source_fsst	category	FSST
+mv_source_fsst	message	FSST
+mv_target_count	8
+mv_target_sample	service_3_longname	Alert: CPU usage at 53% on host-3.datacenter-0.int

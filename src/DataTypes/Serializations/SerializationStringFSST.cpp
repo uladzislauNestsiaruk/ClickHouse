@@ -475,6 +475,7 @@ void SerializationStringFSST::deserializeBinaryBulkWithMultipleStreams(
     std::vector<std::shared_ptr<DeserializeFSSTState>> states;
     if (state)
         states.emplace_back(std::static_pointer_cast<DeserializeFSSTState>(state));
+    size_t new_states_begin = states.size();
 
     /* read offsets */
     settings.path.push_back(Substream::FsstOffsets);
@@ -499,20 +500,20 @@ void SerializationStringFSST::deserializeBinaryBulkWithMultipleStreams(
     settings.path.back() = Substream::Fsst;
     auto * fsst_stream = settings.getter(settings.path);
 
-    for (const auto & s : states)
-        (void)fsst_stream->readBig(reinterpret_cast<char *>(&s->decoder), sizeof(s->decoder));
+    for (size_t ind = new_states_begin; ind < states.size(); ind++)
+        (void)fsst_stream->readBig(reinterpret_cast<char *>(&states[ind]->decoder), sizeof(states[ind]->decoder));
 
     /* read compressed data */
     settings.path.back() = Substream::FsstCompressed;
     auto * compressed_data_stream = settings.getter(settings.path);
     settings.path.pop_back();
 
-    for (const auto & s : states)
+    for (size_t ind = new_states_begin; ind < states.size(); ind++)
     {
         size_t total_compressed_bytes;
         (void)compressed_data_stream->readBig(reinterpret_cast<char *>(&total_compressed_bytes), sizeof(total_compressed_bytes));
-        s->chars.resize(total_compressed_bytes);
-        (void)compressed_data_stream->readBig(reinterpret_cast<char *>(s->chars.data()), total_compressed_bytes);
+        states[ind]->chars.resize(total_compressed_bytes);
+        (void)compressed_data_stream->readBig(reinterpret_cast<char *>(states[ind]->chars.data()), total_compressed_bytes);
     }
 
     /* fill Column */

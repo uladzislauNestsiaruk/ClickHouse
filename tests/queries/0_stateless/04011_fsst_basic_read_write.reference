@@ -1,0 +1,14 @@
+fsst_check	FSST	2
+count_before	2000
+row_0	Log entry #0: Connection from 192.168.1.0 accepted
+row_999	Log entry #999: Connection from 192.168.1.231 accepted
+row_1000	Log entry #1000: Connection from 10.0.0.0 accepted
+row_1999	Log entry #1999: Connection from 10.0.0.231 accepted
+distinct_ids	2000
+parts_after	1
+count_after	2000
+merged_row_0	Log entry #0: Connection from 192.168.1.0 accepted
+merged_row_1999	Log entry #1999: Connection from 10.0.0.231 accepted
+reattach_count	2000
+reattach_row_500	Log entry #500: Connection from 192.168.1.244 accepted
+reattach_row_1500	Log entry #1500: Connection from 10.0.0.244 accepted
