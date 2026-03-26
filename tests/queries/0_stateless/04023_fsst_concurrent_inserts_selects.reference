@@ -1,5 +1,5 @@
-fsst_check	batch	FSST	10
-fsst_check	data	FSST	10
+fsst_check	batch	Fsst	10
+fsst_check	data	Fsst	10
 pre_count	5000
 pre_batches	10
 pre_checksum	16343226147498603159

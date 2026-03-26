@@ -1,4 +1,4 @@
-fsst_check	FSST
+fsst_check	Fsst
 total_count	2003
 literal_1	First value with enough padding to be meaningful for FSST compression testing purposes
 literal_2	Second value with enough padding to be meaningful for FSST compression testing purposes

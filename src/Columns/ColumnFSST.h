@@ -52,8 +52,22 @@ private:
     std::vector<BatchDsc> decoders;
     mutable ColumnPtr decompressed_cache;
 
+    /// Rows with index >= decompressed_start_index are stored uncompressed in string_column.
+    /// Rows before this index are FSST-compressed and need a decoder.
+    /// SIZE_MAX means no uncompressed tail (all rows are compressed).
+    /// 0 means all rows are uncompressed (fully decompressed state).
+    size_t decompressed_start_index = SIZE_MAX;
+
     explicit ColumnFSST(MutableColumnPtr && _string_column)
         : string_column(std::move(_string_column))
+    {
+    }
+
+    /// Constructs a fully decompressed (empty) ColumnFSST for use by cloneEmpty.
+    struct DecompressedTag {};
+    explicit ColumnFSST(MutableColumnPtr && _string_column, DecompressedTag)
+        : string_column(std::move(_string_column))
+        , decompressed_start_index(0)
     {
     }
 
@@ -61,6 +75,7 @@ private:
         : string_column(other.clone())
         , origin_lengths(other.origin_lengths)
         , decoders(other.decoders)
+        , decompressed_start_index(other.decompressed_start_index)
     {
     }
 
@@ -70,6 +85,21 @@ private:
 
 
     MutableColumnPtr decompressAll() const;
+
+    /// Decompresses all data into the underlying ColumnString and clears FSST-specific state.
+    /// After this call, decompressed_start_index == 0 and all rows are uncompressed.
+    void decompressIfNeeded();
+
+    bool hasUncompressedTail() const { return decompressed_start_index != SIZE_MAX; }
+    bool isFullyDecompressed() const { return decompressed_start_index == 0; }
+
+    /// Marks the beginning of the uncompressed tail if not already set.
+    void ensureUncompressedTail()
+    {
+        if (!hasUncompressedTail())
+            decompressed_start_index = string_column->size();
+        decompressed_cache = nullptr;
+    }
 
 public:
     using Base = COWHelper<IColumnHelper<ColumnFSST>, ColumnFSST>;
@@ -114,30 +144,44 @@ public:
     [[nodiscard]] std::string_view getDataAt(size_t n) const override;
     [[nodiscard]] bool isDefaultAt(size_t n) const override;
 
-    /*
-    ColumnFSST is immutable to inserts.
-    It is possible to add insert methods, but several questions arise:
 
-    1)  All data in ColumnFSST are divided into "batches". A batch is a pair
-        (FSST descriptor; compressed block of data). If a new string were inserted,
-        should it be added to the last batch? The last batch was built based on a
-        previously provided block of data, so the compression ratio for the new
-        string could be poor if the last batch is used.
-
-    2)  If a new string were added to a new batch, when should this batch be
-        flushed (i.e., compressed)? As soon as the batch is compressed, it is
-        impossible/impractical to rebuild the FSST descriptor for it.
-    */
-    void insert(const Field &) override { throwNotSupported(); }
-    bool tryInsert(const Field &) override { throwNotSupported(); }
-    void insertData(const char *, size_t) override { throwNotSupported(); }
-    void insertDefault() override { throwNotSupported(); }
-    void deserializeAndInsertFromArena(ReadBuffer &, const SerializationSettings *) override { throwNotSupported(); }
-    void skipSerializedInArena(ReadBuffer &) const override { throwNotSupported(); }
+    void insert(const Field & x) override
+    {
+        ensureUncompressedTail();
+        string_column->insert(x);
+    }
+    bool tryInsert(const Field & x) override
+    {
+        ensureUncompressedTail();
+        return string_column->tryInsert(x);
+    }
+    void insertData(const char * pos, size_t length) override
+    {
+        ensureUncompressedTail();
+        string_column->insertData(pos, length);
+    }
+    void insertDefault() override
+    {
+        ensureUncompressedTail();
+        string_column->insertDefault();
+    }
+    void deserializeAndInsertFromArena(ReadBuffer & buf, const SerializationSettings * settings) override
+    {
+        ensureUncompressedTail();
+        string_column->deserializeAndInsertFromArena(buf, settings);
+    }
+    void skipSerializedInArena(ReadBuffer & buf) const override
+    {
+        getDecompressed();
+        decompressed_cache->assumeMutable()->skipSerializedInArena(buf);
+    }
 
     void popBack(size_t n) override;
 
-    MutableColumnPtr cloneEmpty() const override { return ColumnString::create(); }
+    MutableColumnPtr cloneEmpty() const override
+    {
+        return Base::create(ColumnString::create(), DecompressedTag{});
+    }
 
     void updateHashWithValue(size_t n, SipHash & hash) const override;
     WeakHash32 getWeakHash32() const override;
@@ -146,7 +190,11 @@ public:
     [[nodiscard]] ColumnPtr filter(const Filter & filt, ssize_t result_size_hint) const override;
     void filter(const Filter & filt) override;
 
-    void expand(const Filter & /*mask*/, bool /*inverted*/) override { throwNotSupported(); }
+    void expand(const Filter & mask, bool inverted) override
+    {
+        decompressIfNeeded();
+        string_column->expand(mask, inverted);
+    }
 
     [[nodiscard]] ColumnPtr permute(const Permutation & perm, size_t limit) const override { return decompressAll()->permute(perm, limit); }
     [[nodiscard]] ColumnPtr index(const IColumn & indexes, size_t limit) const override { return decompressAll()->index(indexes, limit); }
@@ -168,7 +216,11 @@ public:
 
     [[nodiscard]] ColumnPtr replicate(const Offsets & offsets) const override;
 
-    void gather(ColumnGathererStream & /* gatherer_stream */) override { throwNotSupported(); }
+    void gather(ColumnGathererStream & gatherer_stream) override
+    {
+        decompressIfNeeded();
+        string_column->gather(gatherer_stream);
+    }
 
     [[nodiscard]] size_t byteSize() const override;
     [[nodiscard]] size_t byteSizeAt(size_t) const override;

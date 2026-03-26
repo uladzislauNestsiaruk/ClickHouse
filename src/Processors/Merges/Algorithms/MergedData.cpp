@@ -1,3 +1,4 @@
+#include <Columns/ColumnFSST.h>
 #include <Columns/IColumn.h>
 #include <Core/Block.h>
 #include <Processors/Merges/Algorithms/MergedData.h>
@@ -35,6 +36,7 @@ void MergedData::initialize(const Block & header, const IMergingAlgorithm::Input
     {
         /// Sometimes header can contain Sparse columns, we don't support Sparse in merge algorithms.
         columns[i] = recursiveRemoveSparse(std::move(columns[i]))->assumeMutable();
+        columns[i] = recursiveRemoveFSST(std::move(columns[i]))->assumeMutable();
         if (is_replicated[i])
             columns[i] = ColumnReplicated::create(std::move(columns[i]));
         /// Columns with dynamic structure (like JSON/Dynamic) need their structure to be

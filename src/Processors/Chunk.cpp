@@ -1,3 +1,4 @@
+#include <Columns/ColumnFSST.h>
 #include <Processors/Chunk.h>
 #include <IO/WriteHelpers.h>
 #include <IO/Operators.h>
@@ -199,6 +200,15 @@ void convertToFullIfSparse(Chunk & chunk)
     auto columns = chunk.detachColumns();
     for (auto & column : columns)
         column = recursiveRemoveSparse(column);
+    chunk.setColumns(std::move(columns), num_rows);
+}
+
+void convertToFullIfFSST(Chunk & chunk)
+{
+    size_t num_rows = chunk.getNumRows();
+    auto columns = chunk.detachColumns();
+    for (auto & column : columns)
+        column = recursiveRemoveFSST(column);
     chunk.setColumns(std::move(columns), num_rows);
 }
 

@@ -1,5 +1,5 @@
-fsst_check	region	FSST
-fsst_check	service	FSST
+fsst_check	region	Fsst
+fsst_check	service	Fsst
 min_region	region-0-datacenter-east
 max_region	region-3-datacenter-east
 min_service	service-0-api-gateway

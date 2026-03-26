@@ -1,6 +1,6 @@
-ser_check	log_message	FSST
+ser_check	log_message	Fsst
 ser_check	short_code	Default
-ser_check	url	FSST
+ser_check	url	Fsst
 total_rows	5000
 cross_filter	19
 after_merge	8000

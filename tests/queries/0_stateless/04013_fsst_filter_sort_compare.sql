@@ -1,5 +1,7 @@
 -- Test: FSST column filtering, sorting, comparison, JOIN, GROUP BY, DISTINCT.
 
+SET allow_experimental_parallel_reading_from_replicas = 0;
+
 DROP TABLE IF EXISTS test_fsst_fsc;
 CREATE TABLE test_fsst_fsc (id UInt64, category String, message String) ENGINE = MergeTree ORDER BY id
 SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;

@@ -1,5 +1,7 @@
 -- Test: FSST with concurrent inserts and background merges.
 
+SET allow_experimental_parallel_reading_from_replicas = 0;
+
 DROP TABLE IF EXISTS test_fsst_conc;
 CREATE TABLE test_fsst_conc (id UInt64, batch String, data String) ENGINE = MergeTree ORDER BY id
 SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;

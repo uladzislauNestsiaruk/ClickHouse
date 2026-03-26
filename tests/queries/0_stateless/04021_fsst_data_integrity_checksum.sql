@@ -1,5 +1,7 @@
 -- Test: FSST data integrity via checksums across insert, merge, DETACH/ATTACH, copy.
 
+SET allow_experimental_parallel_reading_from_replicas = 0;
+
 DROP TABLE IF EXISTS test_fsst_chk;
 DROP TABLE IF EXISTS test_fsst_chk_copy;
 

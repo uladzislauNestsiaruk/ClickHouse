@@ -1,3 +1,4 @@
+#include <Columns/ColumnFSST.h>
 #include <Core/ProtocolDefines.h>
 #include <Core/Block.h>
 
@@ -110,11 +111,13 @@ std::tuple<SerializationPtr, SerializationInfoPtr, ColumnPtr> NativeWriter::getS
                 result_column = recursiveRemoveSparse(result_column);
         }
 
+        result_column = recursiveRemoveFSST(result_column);
         auto info = column.type->getSerializationInfo(*result_column);
         return {column.type->getSerialization(*info), info, result_column};
     }
 
-    return {column.type->getDefaultSerialization(), nullptr, recursiveRemoveSparse(column.column->convertToFullColumnIfReplicated())};
+    auto remove_fsst = recursiveRemoveFSST(column.column);
+    return {column.type->getDefaultSerialization(), nullptr, recursiveRemoveSparse(remove_fsst->convertToFullColumnIfReplicated())};
 }
 
 size_t NativeWriter::write(const Block & block)

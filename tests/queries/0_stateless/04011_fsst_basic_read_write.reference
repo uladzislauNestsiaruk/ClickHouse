@@ -1,4 +1,4 @@
-fsst_check	FSST	2
+fsst_check	Fsst	2
 count_before	2000
 row_0	Log entry #0: Connection from 192.168.1.0 accepted
 row_999	Log entry #999: Connection from 192.168.1.231 accepted

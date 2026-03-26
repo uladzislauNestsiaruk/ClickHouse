@@ -1,22 +1,22 @@
-fsst_empty_mix	FSST
+fsst_empty_mix	Fsst
 empty_mix_count	3000
 empty_count	1000
 nonempty_count	2000
 empty_row
 nonempty_row	1
-fsst_null_bytes	FSST
+fsst_null_bytes	Fsst
 null_bytes_present	2000
-fsst_long	FSST
+fsst_long	Fsst
 long_len	1
 long_prefix	LogLine[42]
 long_endswith	1
-fsst_unicode	FSST
+fsst_unicode	Fsst
 unicode_byte_gt_char	1
 unicode_starts	1
 nullable_count	2000
 nullable_nulls	400
 nullable_not_nulls	1600
 nullable_coalesce	1600
-fsst_identical	FSST
+fsst_identical	Fsst
 identical_uniq	1
 identical_value	The quick brown fox jumps over the lazy dog.

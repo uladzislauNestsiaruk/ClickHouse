@@ -1,5 +1,5 @@
-fsst_check	category	FSST
-fsst_check	message	FSST
+fsst_check	category	Fsst
+fsst_check	message	Fsst
 eq_filter	1000
 range_filter	2000
 like_filter	250

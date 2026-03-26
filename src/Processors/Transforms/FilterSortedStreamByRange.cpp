@@ -1,4 +1,3 @@
-#include <Columns/ColumnFSST.h>
 #include <Processors/Transforms/FilterSortedStreamByRange.h>
 
 #include <Columns/IColumn.h>
@@ -35,10 +34,8 @@ void FilterSortedStreamByRange::transform(Chunk & chunk)
     auto src_columns = chunk.detachColumns();
     for (auto row : {static_cast<UInt64>(0), rows_before_filtration - 1})
     {
-        for (size_t col = 0; col < quick_check_columns.size(); ++col) {
-            recursiveRemoveFSST(src_columns[col]->getPtr());
+        for (size_t col = 0; col < quick_check_columns.size(); ++col)
             quick_check_columns[col]->insertFrom(*src_columns[col].get(), row);
-        }
     }
     chunk.setColumns(std::move(quick_check_columns), 2);
     filter_transform.transform(chunk);

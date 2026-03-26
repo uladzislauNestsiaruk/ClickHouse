@@ -9,9 +9,7 @@
 
 #    include <Columns/ColumnFSST.h>
 #    include <Columns/IColumn_fwd.h>
-#    include <DataTypes/DataTypesNumber.h>
 #    include <DataTypes/Serializations/SerializationStringFSST.h>
-#    include <DataTypes/Serializations/SerializationStringSize.h>
 #    include <IO/WriteBuffer.h>
 #    include <base/types.h>
 #    include <Common/Exception.h>
@@ -315,23 +313,11 @@ ColumnPtr SerializationStringFSST::SubcolumnCreator::create(const ColumnPtr & pr
 void SerializationStringFSST::enumerateStreams(
     EnumerateStreamsSettings & settings, const StreamCallback & callback, const SubstreamData & data) const
 {
-    if (settings.enumerate_virtual_streams)
-    {
-        const auto * column_fsst = data.column ? typeid_cast<const ColumnFSST *>(data.column.get()) : nullptr;
-        ColumnPtr sizes_column;
-        if (column_fsst)
-            sizes_column = column_fsst->createSizeSubcolumn();
-
-        auto sizes_serialization = std::make_shared<SerializationStringSize>(MergeTreeStringSerializationVersion::SINGLE_STREAM);
-
-        settings.path.push_back(Substream::InlinedStringSizes);
-        settings.path.back().data = SubstreamData(sizes_serialization)
-                                        .withType(data.type ? std::make_shared<DataTypeUInt64>() : nullptr)
-                                        .withColumn(std::move(sizes_column))
-                                        .withSerializationInfo(data.serialization_info);
-        callback(settings.path);
-        settings.path.pop_back();
-    }
+    /// FSST does not support reading the `.size` subcolumn independently from disk
+    /// because its on-disk format (FsstOffsets/Fsst/FsstCompressed) is incompatible
+    /// with SerializationStringSize which expects Regular or StringSizes streams.
+    /// Queries like `length(s)` will read the full column and compute sizes.
+    (void)data;
 
     // compressed strings offsets stream (must match serializeStates order)
     settings.path.push_back(Substream::FsstOffsets);
@@ -478,9 +464,15 @@ void SerializationStringFSST::deserializeBinaryBulkWithMultipleStreams(
     size_t new_states_begin = states.size();
 
     /* read offsets */
+    /// Account for rows remaining in the leftover state from a previous call
+    /// so we don't over-read from the stream and then lose unconsumed states.
+    size_t leftover_rows = 0;
+    if (!states.empty())
+        leftover_rows = states[0]->offsets.size() - states[0]->current_ind;
+
     settings.path.push_back(Substream::FsstOffsets);
     auto * offsets_stream = settings.getter(settings.path);
-    for (size_t rows_read = 0; (limit == 0 || rows_read < limit) && !offsets_stream->eof();)
+    for (size_t rows_read = leftover_rows; (limit == 0 || rows_read < limit) && !offsets_stream->eof();)
     {
         states.emplace_back(std::make_shared<DeserializeFSSTState>());
 
