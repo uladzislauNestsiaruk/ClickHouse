@@ -361,14 +361,21 @@ void SerializationInfo::fromJSON(const Poco::JSON::Object & object)
     kind_stack = ISerialization::stringToKindStack(object.getValue<String>(KEY_KIND));
 }
 
+bool useFSST(const SerializationInfo::Data & data, const SerializationInfo::Settings & settings)
+{
+    double ratio = data.num_rows ? std::min(static_cast<double>(data.num_defaults) / static_cast<double>(data.num_rows), 1.0) : 0.0;
+
+    return data.is_string_column && ratio <= settings.ratio_of_defaults_for_sparse
+        && data.avgStringLength() >= settings.min_avg_string_length_for_fsst && data.total_string_bytes >= settings.min_total_bytes_for_fsst
+        && data.fsst_compression_ratio < settings.max_fsst_compression_ratio;
+}
+
 ISerialization::KindStack SerializationInfo::chooseKindStack(const Data & data, const Settings & settings)
 {
     ISerialization::KindStack kind_stack = {ISerialization::Kind::DEFAULT};
     double ratio = data.num_rows ? std::min(static_cast<double>(data.num_defaults) / static_cast<double>(data.num_rows), 1.0) : 0.0;
 
-    if (data.is_string_column && ratio <= settings.ratio_of_defaults_for_sparse
-        && data.avgStringLength() >= settings.min_avg_string_length_for_fsst && data.total_string_bytes >= settings.min_total_bytes_for_fsst
-        && data.fsst_compression_ratio < settings.max_fsst_compression_ratio)
+    if (useFSST(data, settings))
         kind_stack.push_back(ISerialization::Kind::FSST);
     else if (ratio > settings.ratio_of_defaults_for_sparse)
         kind_stack.push_back(ISerialization::Kind::SPARSE);
