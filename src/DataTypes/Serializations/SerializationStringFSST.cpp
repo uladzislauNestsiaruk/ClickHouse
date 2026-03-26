@@ -196,6 +196,7 @@ void serializeStates(std::vector<std::shared_ptr<SerializeFSSTState<false>>> sta
             + compressed_data_lengths[compressed_strings - 1];
 
         decoders[state_ind] = fsst_decoder(fsst_encoder);
+        fsst_destroy(fsst_encoder);
     };
 
     for (size_t state_ind = 0; state_ind < states.size(); state_ind++)

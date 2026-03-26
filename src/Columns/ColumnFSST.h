@@ -71,18 +71,11 @@ private:
     {
     }
 
-    ColumnFSST(const ColumnFSST & other)
-        : string_column(other.clone())
-        , origin_lengths(other.origin_lengths)
-        , decoders(other.decoders)
-        , decompressed_start_index(other.decompressed_start_index)
-    {
-    }
+    ColumnFSST(const ColumnFSST & other) = default;
 
     std::optional<size_t> batchByRow(size_t row) const;
 
     void filterInnerData(const Filter & filt, std::vector<UInt64> & lengths, std::vector<BatchDsc> & decoders) const;
-
 
     MutableColumnPtr decompressAll() const;
 

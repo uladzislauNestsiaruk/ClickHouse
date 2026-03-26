@@ -272,7 +272,9 @@ void ColumnFSST::doInsertRangeFrom(const IColumn & src, size_t start, size_t len
     if (src_fsst)
     {
         /// Source is FSST — decompress the requested range and insert.
-        auto decompressed_src = src_fsst->getDecompressed();
+        /// Use convertToFullIfNeeded instead of getDecompressed to avoid caching
+        /// the decompressed data in the source column (which would double memory during merge).
+        auto decompressed_src = src_fsst->convertToFullIfNeeded();
         string_column->insertRangeFrom(*decompressed_src, start, length);
     }
     else
