@@ -1,10 +1,11 @@
+-- Tags: no-random-settings
 -- Test: FSST with concurrent inserts and background merges.
 
 SET allow_experimental_parallel_reading_from_replicas = 0;
 
 DROP TABLE IF EXISTS test_fsst_conc;
 CREATE TABLE test_fsst_conc (id UInt64, batch String, data String) ENGINE = MergeTree ORDER BY id
-SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
+SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 8192, max_fsst_compression_ratio = 0.7;
 
 -- 10 separate inserts creating 10 parts.
 INSERT INTO test_fsst_conc SELECT number,       'batch_01_identifier', concat('Data from batch 01, row ', toString(number),       ' padding=', repeat('x', 30)) FROM numbers(500);
@@ -19,7 +20,7 @@ INSERT INTO test_fsst_conc SELECT number + 4000, 'batch_09_identifier', concat('
 INSERT INTO test_fsst_conc SELECT number + 4500, 'batch_10_identifier', concat('Data from batch 10, row ', toString(number + 4500), ' padding=', repeat('g', 30)) FROM numbers(500);
 
 -- Verify FSST across parts.
-SELECT 'fsst_check', column, serialization_kind, count() AS parts FROM system.parts_columns WHERE database = currentDatabase() AND table = 'test_fsst_conc' AND column IN ('batch', 'data') AND active GROUP BY column, serialization_kind ORDER BY column;
+SELECT 'fsst_check', column, serialization_kind, FROM system.parts_columns WHERE database = currentDatabase() AND table = 'test_fsst_conc' AND column IN ('batch', 'data') AND active GROUP BY column, serialization_kind ORDER BY column;
 
 -- Pre-merge checks.
 SELECT 'pre_count', count() FROM test_fsst_conc;

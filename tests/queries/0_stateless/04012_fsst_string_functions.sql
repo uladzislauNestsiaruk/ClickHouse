@@ -1,5 +1,8 @@
+-- Tags: no-random-settings
 -- Test: String functions on FSST-compressed columns.
 -- Verifies decompression works transparently for all common string operations.
+
+SET optimize_functions_to_subcolumns = 0;
 
 DROP TABLE IF EXISTS test_fsst_func;
 CREATE TABLE test_fsst_func (id UInt64, s String) ENGINE = MergeTree ORDER BY id

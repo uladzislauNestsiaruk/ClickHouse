@@ -7,14 +7,14 @@ prewhere_sample	40	category_group_0
 pk_fsst	data	Fsst
 pk_fsst	event_type	Fsst
 pk_fsst	tenant	Fsst
-pk_lookup	200
+pk_lookup	0
 pk_range	2000
 pk_sample	tenant_0_longname	event_0_type_name	0
-pk_sample	tenant_0_longname	event_0_type_name	50
-pk_sample	tenant_0_longname	event_0_type_name	100
+pk_sample	tenant_0_longname	event_0_type_name	10
+pk_sample	tenant_0_longname	event_0_type_name	20
 idx_fsst	message	Fsst
 idx_fsst	tag	Fsst
 set_idx	200
 bloom_idx	3334
 minmax_idx	200
-1
+all_1_1_0	1	

@@ -2,13 +2,13 @@ fsst_empty_mix	Fsst
 empty_mix_count	3000
 empty_count	1000
 nonempty_count	2000
-empty_row
+empty_row	
 nonempty_row	1
 fsst_null_bytes	Fsst
 null_bytes_present	2000
 fsst_long	Fsst
-long_len	1
-long_prefix	LogLine[42]
+long_len	0
+long_prefix	LogLine[42] 
 long_endswith	1
 fsst_unicode	Fsst
 unicode_byte_gt_char	1

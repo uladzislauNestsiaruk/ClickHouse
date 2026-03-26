@@ -1,3 +1,4 @@
+-- Tags: no-random-settings
 -- Test: FSST behavior during merges and mutations.
 
 SET mutations_sync = 1;

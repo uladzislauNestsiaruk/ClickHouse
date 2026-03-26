@@ -1,3 +1,4 @@
+-- Tags: no-random-settings
 -- Test: FSST basic read/write correctness.
 -- Verifies data written with FSST is read back correctly, survives merge and DETACH/ATTACH.
 

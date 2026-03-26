@@ -1,3 +1,4 @@
+-- Tags: no-random-settings
 -- Test: FSST data integrity via checksums across insert, merge, DETACH/ATTACH, copy.
 
 SET allow_experimental_parallel_reading_from_replicas = 0;

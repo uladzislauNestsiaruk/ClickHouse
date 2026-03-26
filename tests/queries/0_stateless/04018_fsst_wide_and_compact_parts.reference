@@ -1,13 +1,13 @@
 compact_type	Compact
 compact_fsst	Fsst
 compact_count	2000
-compact_sample	Compact part message #42 with repeated padding: compact_data compact_data compact_data compact_data compact_data
-1
+compact_sample	Compact part message #42 with repeated padding: compact_data compact_data compact_data compact_data compact_data 
+all_1_1_0	1	
 wide_type	Wide
 wide_fsst	Fsst
 wide_count	2000
-wide_sample	Wide part message #42 with repeated padding: wide_format_data wide_format_data wide_format_data wide_format_data wide_format_data
-1
+wide_sample	Wide part message #42 with repeated padding: wide_format_data wide_format_data wide_format_data wide_format_data wide_format_data 
+all_1_1_0	1	
 wide_merged_count	4000
-wide_merged_sample	Wide part 2 message #3000 with different padding: second_part_data second_part_data second_part_data second_part_data second_part_data
-1
+wide_merged_sample	Wide part 2 message #2874 with different padding: second_part_data second_part_data second_part_data second_part_data second_part_data 
+all_1_2_1	1	

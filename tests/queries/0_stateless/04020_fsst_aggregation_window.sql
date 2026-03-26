@@ -1,3 +1,4 @@
+-- Tags: no-random-settings
 -- Test: FSST with aggregate and window functions.
 
 DROP TABLE IF EXISTS test_fsst_agg;
@@ -28,6 +29,6 @@ SELECT 'topk', arraySort(topK(4)(region)) FROM test_fsst_agg;
 SELECT 'double_group', region, service, avg(latency_ms) AS avg_lat FROM test_fsst_agg GROUP BY region, service ORDER BY region, service LIMIT 5;
 
 -- Window function: ROW_NUMBER partitioned by FSST column.
-SELECT 'window_rn', region, id, rn FROM (SELECT region, id, row_number() OVER (PARTITION BY region ORDER BY latency_ms DESC) AS rn FROM test_fsst_agg) WHERE rn <= 2 ORDER BY region, rn LIMIT 8;
+SELECT 'window_rn', region, id, rn FROM (SELECT region, id, row_number() OVER (PARTITION BY region ORDER BY latency_ms DESC, id) AS rn FROM test_fsst_agg) WHERE rn <= 2 ORDER BY region, rn LIMIT 8;
 
 DROP TABLE test_fsst_agg;

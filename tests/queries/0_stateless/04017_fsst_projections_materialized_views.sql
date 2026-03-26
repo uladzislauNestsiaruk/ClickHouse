@@ -1,3 +1,4 @@
+-- Tags: no-random-settings
 -- Test: FSST with projections and materialized views.
 
 -- Part 1: Projections.

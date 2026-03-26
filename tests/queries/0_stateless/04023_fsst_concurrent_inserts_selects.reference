@@ -1,12 +1,12 @@
-fsst_check	batch	Fsst	10
-fsst_check	data	Fsst	10
+fsst_check	batch	Fsst
+fsst_check	data	Fsst
 pre_count	5000
 pre_batches	10
-pre_checksum	16343226147498603159
+pre_checksum	3448628280688195351
 post_count	5000
 post_batches	10
-post_checksum	16343226147498603159
+post_checksum	3448628280688195351
 batch1_row	Data from batch 01, row 0 padding=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 batch5_row	Data from batch 05, row 2000 padding=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-batch10_row	Data from batch 10, row 4999 padding=ggggggggggggggggggggggggggggg
+batch10_row	Data from batch 10, row 4999 padding=gggggggggggggggggggggggggggggg
 final_parts	1

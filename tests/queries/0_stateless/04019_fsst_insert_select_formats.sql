@@ -1,4 +1,7 @@
+-- Tags: no-random-settings
 -- Test: FSST with INSERT VALUES, INSERT SELECT, CTEs, UNION ALL, table copies.
+
+SET optimize_functions_to_subcolumns = 0;
 
 DROP TABLE IF EXISTS test_fsst_fmt;
 CREATE TABLE test_fsst_fmt (id UInt64, data String) ENGINE = MergeTree ORDER BY id

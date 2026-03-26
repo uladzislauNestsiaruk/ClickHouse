@@ -1,3 +1,4 @@
+-- Tags: no-random-settings
 DROP TABLE IF EXISTS fsst_test_table;
 CREATE TABLE fsst_test_table (id UInt64, s String)
 ENGINE = MergeTree() ORDER BY id

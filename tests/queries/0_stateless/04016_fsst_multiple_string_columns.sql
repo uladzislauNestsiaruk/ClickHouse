@@ -1,3 +1,4 @@
+-- Tags: no-random-settings
 -- Test: FSST with multiple string columns — mixed eligibility, cross-column queries, merge.
 
 DROP TABLE IF EXISTS test_fsst_multi;

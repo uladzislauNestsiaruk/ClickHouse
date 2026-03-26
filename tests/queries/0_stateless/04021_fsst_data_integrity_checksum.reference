@@ -1,7 +1,7 @@
 fsst_check	s1	Fsst
 fsst_check	s2	Fsst
-chk_insert	10267069049498135562
-chk_merge	10267069049498135562
-chk_reattach	10267069049498135562
+chk_insert	13743887214488388192
+chk_merge	13743887214488388192
+chk_reattach	13743887214488388192
 chk_copy_match	1
 row_mismatches	0

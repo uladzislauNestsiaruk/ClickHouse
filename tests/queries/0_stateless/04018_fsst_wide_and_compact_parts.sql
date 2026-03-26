@@ -1,3 +1,4 @@
+-- Tags: no-random-settings
 -- Test: FSST in both compact and wide part formats + CHECK TABLE.
 
 -- Part 1: Compact parts.

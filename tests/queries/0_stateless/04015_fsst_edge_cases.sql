@@ -1,4 +1,7 @@
+-- Tags: no-random-settings
 -- Test: FSST edge cases — empty strings, null bytes, long strings, unicode, nullable, identical.
+
+SET optimize_functions_to_subcolumns = 0;
 
 -- Case 1: Empty/non-empty string mix.
 DROP TABLE IF EXISTS test_fsst_edge;

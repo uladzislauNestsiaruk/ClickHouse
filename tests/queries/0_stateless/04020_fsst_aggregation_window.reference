@@ -8,16 +8,16 @@ any_region	1
 uniq_regions	4
 uniq_services	10
 topk	['region-0-datacenter-east','region-1-datacenter-east','region-2-datacenter-east','region-3-datacenter-east']
-double_group	region-0-datacenter-east	service-0-api-gateway	2495.6
-double_group	region-0-datacenter-east	service-4-api-gateway	2498.6
-double_group	region-0-datacenter-east	service-8-api-gateway	2501.6
-double_group	region-1-datacenter-east	service-1-api-gateway	2499.1
-double_group	region-1-datacenter-east	service-5-api-gateway	2502.1
-window_rn	region-0-datacenter-east	2856	2856
-window_rn	region-0-datacenter-east	5712	2856
-window_rn	region-1-datacenter-east	2857	2857
-window_rn	region-1-datacenter-east	5713	2857
-window_rn	region-2-datacenter-east	2858	2858
-window_rn	region-2-datacenter-east	5714	2858
-window_rn	region-3-datacenter-east	2859	2859
-window_rn	region-3-datacenter-east	5715	2859
+double_group	region-0-datacenter-east	service-0-api-gateway	2503
+double_group	region-0-datacenter-east	service-2-api-gateway	2507
+double_group	region-0-datacenter-east	service-4-api-gateway	2491
+double_group	region-0-datacenter-east	service-6-api-gateway	2495
+double_group	region-0-datacenter-east	service-8-api-gateway	2499
+window_rn	region-0-datacenter-east	712	1
+window_rn	region-0-datacenter-east	5712	2
+window_rn	region-1-datacenter-east	3569	1
+window_rn	region-1-datacenter-east	8569	2
+window_rn	region-2-datacenter-east	4998	1
+window_rn	region-2-datacenter-east	9998	2
+window_rn	region-3-datacenter-east	2855	1
+window_rn	region-3-datacenter-east	7855	2

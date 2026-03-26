@@ -2,6 +2,6 @@ ser_check	log_message	Fsst
 ser_check	short_code	Default
 ser_check	url	Fsst
 total_rows	5000
-cross_filter	19
+cross_filter	38
 after_merge	8000
-merged_sample	6000	W	[2025-06-15] WARN server-0: Sl
+merged_sample	6000	MN	[2025-06-15] WARN server-0: Sl

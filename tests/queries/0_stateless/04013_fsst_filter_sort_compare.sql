@@ -1,3 +1,4 @@
+-- Tags: no-random-settings
 -- Test: FSST column filtering, sorting, comparison, JOIN, GROUP BY, DISTINCT.
 
 SET allow_experimental_parallel_reading_from_replicas = 0;

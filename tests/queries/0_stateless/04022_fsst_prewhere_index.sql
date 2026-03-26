@@ -1,4 +1,7 @@
+-- Tags: no-random-settings
 -- Test: FSST with PREWHERE, primary key strings, and secondary skip indices.
+
+SET optimize_functions_to_subcolumns = 0;
 
 -- Part 1: PREWHERE.
 DROP TABLE IF EXISTS test_fsst_pw;

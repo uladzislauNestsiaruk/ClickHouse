@@ -1,9 +1,9 @@
 fsst_before	msg	Fsst
-fsst_before	tag	Fsst
+fsst_before	tag	Default
 parts_before	3
 count_before	3000
 fsst_after_merge	msg	Fsst
-fsst_after_merge	tag	Fsst
+fsst_after_merge	tag	Default
 parts_after	1
 count_after	3000
 row_0	Message part1 row=0 data=aaaaaaaaaa

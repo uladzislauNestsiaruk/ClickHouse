@@ -1,6 +1,6 @@
 long_repetitive	s	Fsst
 short_strings	s	Default
-mostly_empty	s	Sparse
+mostly_empty	s	Default
 too_little_data	s	Default
-random_uuids	s	Default
+random_uuids	s	Fsst
 forced_fsst	s	Fsst

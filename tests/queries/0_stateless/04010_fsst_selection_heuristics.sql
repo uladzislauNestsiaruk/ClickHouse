@@ -1,3 +1,4 @@
+-- Tags: no-random-settings
 -- Test: FSST serialization selection heuristics.
 -- Verifies serialization_kind based on avg length, total bytes, sparse ratio, compression ratio.
 
