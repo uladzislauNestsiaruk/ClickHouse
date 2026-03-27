@@ -21,6 +21,7 @@ void IMergingAlgorithmWithSharedChunks::initialize(Inputs inputs)
 {
     removeReplicatedFromSortingColumns(header, inputs, description);
     removeConstAndSparse(inputs);
+    removeFSST(inputs);
     merged_data->initialize(*header, inputs);
 
     for (size_t source_num = 0; source_num < inputs.size(); ++source_num)
@@ -48,6 +49,7 @@ void IMergingAlgorithmWithSharedChunks::consume(Input & input, size_t source_num
 {
     removeReplicatedFromSortingColumns(header, input, description);
     removeConstAndSparse(input);
+    removeFSST(input);
 
     auto & source = sources[source_num];
     source.skip_last_row = input.skip_last_row;

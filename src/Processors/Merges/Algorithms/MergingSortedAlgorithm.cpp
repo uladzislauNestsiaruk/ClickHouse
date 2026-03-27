@@ -78,6 +78,7 @@ void MergingSortedAlgorithm::initialize(Inputs inputs)
 
     removeReplicatedFromSortingColumns(header, inputs, description);
     removeConstAndSparse(inputs);
+    removeFSST(inputs);
     merged_data.initialize(*header, inputs);
     current_inputs = std::move(inputs);
 
@@ -112,6 +113,7 @@ void MergingSortedAlgorithm::consume(Input & input, size_t source_num)
 {
     removeReplicatedFromSortingColumns(header, input, description);
     removeConstAndSparse(input);
+    removeFSST(input);
     current_inputs[source_num].swap(input);
     cursors[source_num].reset(current_inputs[source_num].chunk.getColumns(), *header, current_inputs[source_num].chunk.getNumRows());
 

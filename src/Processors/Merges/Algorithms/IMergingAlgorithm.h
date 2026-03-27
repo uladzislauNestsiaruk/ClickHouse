@@ -65,6 +65,17 @@ public:
             removeConstAndSparse(input);
     }
 
+    static void removeFSST(Input & input)
+    {
+        convertToFullIfFSST(input.chunk);
+    }
+
+    static void removeFSST(Inputs & inputs)
+    {
+        for (auto & input : inputs)
+            removeFSST(input);
+    }
+
     static void removeReplicatedFromSortingColumns(const SharedHeader & header, Input & input, const SortDescription & description)
     {
         if (!input.chunk)

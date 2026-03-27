@@ -842,6 +842,7 @@ void SummingSortedAlgorithm::initialize(Inputs inputs)
 {
     removeReplicatedFromSortingColumns(header, inputs, description);
     removeConstAndSparse(inputs);
+    removeFSST(inputs);
     merged_data.initialize(*header, inputs);
 
     for (auto & input : inputs)
@@ -855,6 +856,7 @@ void SummingSortedAlgorithm::consume(Input & input, size_t source_num)
 {
     removeReplicatedFromSortingColumns(header, input, description);
     removeConstAndSparse(input);
+    removeFSST(input);
     preprocessChunk(input.chunk, columns_definition);
     updateCursor(input, source_num);
 }
