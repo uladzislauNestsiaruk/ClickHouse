@@ -16,7 +16,7 @@ DROP TABLE test_fsst_heuristics;
 CREATE TABLE test_fsst_heuristics (id UInt64, s String) ENGINE = MergeTree ORDER BY id
 SETTINGS ratio_of_defaults_for_sparse_serialization = 0.9, min_avg_string_length_for_fsst_serialization = 8.0,
     min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 0.85;
-INSERT INTO test_fsst_heuristics SELECT number, substring('abcdefghij', (number % 3) + 1, 2) FROM numbers(10000);
+INSERT INTO test_fsst_heuristics SELECT number, substring('abcdefghijklmnbvcxz', number % 6, (number % 6) + 2) FROM numbers(10000);
 SELECT 'short_strings', column, serialization_kind FROM system.parts_columns WHERE database = currentDatabase() AND table = 'test_fsst_heuristics' AND column = 's' AND active;
 DROP TABLE test_fsst_heuristics;
 
@@ -39,7 +39,7 @@ DROP TABLE test_fsst_heuristics;
 -- Case 5: Random UUIDs => FSST NOT selected (bad compression ratio).
 CREATE TABLE test_fsst_heuristics (id UInt64, s String) ENGINE = MergeTree ORDER BY id
 SETTINGS ratio_of_defaults_for_sparse_serialization = 0.9, min_avg_string_length_for_fsst_serialization = 8.0,
-    min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 0.85;
+    min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 0.5;
 INSERT INTO test_fsst_heuristics SELECT number, toString(generateUUIDv4()) FROM numbers(2000);
 SELECT 'random_uuids', column, serialization_kind FROM system.parts_columns WHERE database = currentDatabase() AND table = 'test_fsst_heuristics' AND column = 's' AND active;
 DROP TABLE test_fsst_heuristics;

@@ -10,6 +10,8 @@
 #include <IO/ReadHelpers.h>
 #include <IO/WriteHelpers.h>
 #include <base/EnumReflection.h>
+#include <Common/Logger.h>
+#include <Common/logger_useful.h>
 
 #ifdef ENABLE_FSST
 #    include <fsst.h>
@@ -49,23 +51,20 @@ constexpr auto KEY_PROPAGATE_DATA_TYPES_SERIALIZATION_VERSIONS_TO_NESTED_TYPES =
 
 }
 
-void fsstSampleAndCompress(const IColumn & column, SerializationInfo::Data & data)
+void fsstSampleAndCompress(const IColumn & column, SerializationInfo::Data & data, const SerializationInfoSettings & settings)
 {
-    size_t rows = column.size();
-    size_t byte_size = column.byteSize();
-    size_t offset_overhead = rows * sizeof(UInt64);
-
     /* basic fsst usage condition checks */
-    data.total_string_bytes += (byte_size > offset_overhead) ? (byte_size - offset_overhead) : 0;
-    if (data.fsst_compression_ratio != 1.0 || data.total_string_bytes <= SerializationStringFSST::kCompressSize)
-        return;
-
+    size_t rows = column.size();
     const auto * col_string = typeid_cast<const ColumnString *>(&column);
     if (!col_string)
         return;
 
+    data.total_string_bytes += col_string->getChars().size();
+    if (data.total_string_bytes <= settings.min_total_bytes_for_fsst)
+        return;
+
     /* sample */
-    static constexpr size_t kMaxSampleStrings = 256;
+    static constexpr size_t kMaxSampleStrings = 512;
     size_t step = std::max<size_t>(1, rows / kMaxSampleStrings);
 
     std::vector<const unsigned char *> sample_ptrs;
@@ -105,6 +104,7 @@ void fsstSampleAndCompress(const IColumn & column, SerializationInfo::Data & dat
             out_ptrs.data());
 
         size_t compressed_total = std::accumulate(out_lengths.begin(), out_lengths.begin() + compressed_count, 0uLL);
+        compressed_total += sizeof(fsst_decoder_t);
         data.fsst_compression_ratio = static_cast<double>(compressed_total) / static_cast<double>(sample_total_bytes);
 
         fsst_destroy(encoder);
@@ -121,11 +121,6 @@ void SerializationInfo::Data::add(const IColumn & column)
 
     bool col_is_string = column.getFamilyName() == std::string("String");
     is_string_column |= col_is_string;
-
-#ifdef ENABLE_FSST
-    if (col_is_string && rows > 0)
-        fsstSampleAndCompress(column, *this);
-#endif
 }
 
 void SerializationInfo::Data::add(const Data & other)
@@ -133,9 +128,10 @@ void SerializationInfo::Data::add(const Data & other)
     num_rows += other.num_rows;
     num_defaults += other.num_defaults;
     is_string_column |= other.is_string_column;
+    fsst_compression_ratio = (fsst_compression_ratio * static_cast<double>(total_string_bytes)
+                              + other.fsst_compression_ratio * static_cast<double>(other.total_string_bytes))
+        / static_cast<double>(total_string_bytes + other.total_string_bytes);
     total_string_bytes += other.total_string_bytes;
-
-    fsst_compression_ratio = std::min(other.fsst_compression_ratio, fsst_compression_ratio);
 }
 
 void SerializationInfo::Data::remove(const Data & other)
@@ -175,6 +171,12 @@ SerializationInfo::SerializationInfo(ISerialization::KindStack kind_stack_, cons
 void SerializationInfo::add(const IColumn & column)
 {
     data.add(column);
+
+#ifdef ENABLE_FSST
+    if (data.is_string_column && column.size() > 0)
+        fsstSampleAndCompress(column, data, settings);
+#endif
+
     if (settings.choose_kind)
         kind_stack = chooseKindStack(data, settings);
 }
