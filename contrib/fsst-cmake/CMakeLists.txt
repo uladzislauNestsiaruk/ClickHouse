@@ -15,5 +15,5 @@ set(SRCS
 add_library(_fsst ${SRCS})
 add_library(ch_contrib::fsst ALIAS _fsst)
 
-target_include_directories(_fsst PUBLIC "${LIBRARY_DIR}")
+target_include_directories(_fsst SYSTEM PUBLIC "${LIBRARY_DIR}")
 target_compile_definitions(_fsst INTERFACE ENABLE_FSST)
