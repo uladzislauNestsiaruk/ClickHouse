@@ -842,7 +842,9 @@ void SummingSortedAlgorithm::initialize(Inputs inputs)
 {
     removeReplicatedFromSortingColumns(header, inputs, description);
     removeConstAndSparse(inputs);
+#ifdef ENABLE_FSST
     removeFSST(inputs);
+#endif
     merged_data.initialize(*header, inputs);
 
     for (auto & input : inputs)

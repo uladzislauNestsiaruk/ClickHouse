@@ -51,6 +51,7 @@ constexpr auto KEY_PROPAGATE_DATA_TYPES_SERIALIZATION_VERSIONS_TO_NESTED_TYPES =
 
 }
 
+#ifdef ENABLE_FSST
 void fsstSampleAndCompress(const IColumn & column, SerializationInfo::Data & data, const SerializationInfoSettings & settings)
 {
     /* basic fsst usage condition checks */
@@ -110,6 +111,7 @@ void fsstSampleAndCompress(const IColumn & column, SerializationInfo::Data & dat
         fsst_destroy(encoder);
     }
 }
+#endif
 
 void SerializationInfo::Data::add(const IColumn & column)
 {
@@ -371,7 +373,7 @@ bool useFSST(const SerializationInfo::Data & data, const SerializationInfo::Sett
         && data.avgStringLength() >= settings.min_avg_string_length_for_fsst && data.total_string_bytes >= settings.min_total_bytes_for_fsst
         && data.fsst_compression_ratio < settings.max_fsst_compression_ratio;
 #else
-    return false
+    return false;
 #endif
 }
 

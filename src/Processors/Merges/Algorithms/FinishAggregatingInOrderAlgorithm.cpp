@@ -42,7 +42,9 @@ void FinishAggregatingInOrderAlgorithm::initialize(Inputs inputs)
 {
     removeReplicatedFromSortingColumns(inputs, description);
     removeConstAndSparse(inputs);
+#ifdef ENABLE_FSST
     removeFSST(inputs);
+#endif
     current_inputs = std::move(inputs);
     states.resize(num_inputs);
     for (size_t i = 0; i < num_inputs; ++i)
@@ -53,7 +55,9 @@ void FinishAggregatingInOrderAlgorithm::consume(Input & input, size_t source_num
 {
     removeReplicatedFromSortingColumns(input, description);
     removeConstAndSparse(input);
+#ifdef ENABLE_FSST
     removeFSST(input);
+#endif
     if (!input.chunk.hasRows())
         return;
 

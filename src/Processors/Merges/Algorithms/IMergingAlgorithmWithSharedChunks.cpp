@@ -21,7 +21,9 @@ void IMergingAlgorithmWithSharedChunks::initialize(Inputs inputs)
 {
     removeReplicatedFromSortingColumns(header, inputs, description);
     removeConstAndSparse(inputs);
+#ifdef ENABLE_FSST
     removeFSST(inputs);
+#endif
     merged_data->initialize(*header, inputs);
 
     for (size_t source_num = 0; source_num < inputs.size(); ++source_num)
