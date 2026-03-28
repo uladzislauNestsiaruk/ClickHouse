@@ -164,7 +164,8 @@ struct NumComparisonImpl
             ( /// NOLINT
                 const ContainerA & a,
                 const ContainerB & b,
-                PaddedPODArray<UInt8> & c) {
+                PaddedPODArray<UInt8> & c)
+        {
                 /** GCC 4.8.2 vectorizes a loop only if it is written in this form.
           * In this case, if you loop through the array index (the code will look simpler),
           *  the loop will not be vectorized.
@@ -212,7 +213,8 @@ struct NumComparisonImpl
             ( /// NOLINT
                 const ContainerA & a,
                 B b,
-                PaddedPODArray<UInt8> & c) {
+                PaddedPODArray<UInt8> & c)
+        {
                 size_t size = a.size();
                 const A * __restrict a_pos = a.data();
                 UInt8 * __restrict c_pos = c.data();

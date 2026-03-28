@@ -1,28 +1,27 @@
 #pragma once
 
-// #ifdef ENABLE_FSST
+#ifdef ENABLE_FSST
 
-#include <cstddef>
-#include <memory>
-#include <vector>
+#    include <cstddef>
+#    include <memory>
+#    include <vector>
 
-#include <Columns/ColumnString.h>
-#include <Columns/IColumn.h>
-#include <Columns/IColumn_fwd.h>
-#include <DataTypes/Serializations/SerializationStringFSST.h>
-#include <base/types.h>
-#include <Common/COW.h>
-#include <Common/PODArray.h>
-#include <Common/WeakHash.h>
+#    include <Columns/ColumnString.h>
+#    include <Columns/IColumn.h>
+#    include <Columns/IColumn_fwd.h>
+#    include <DataTypes/Serializations/SerializationStringFSST.h>
+#    include <base/types.h>
+#    include <Common/COW.h>
+#    include <Common/PODArray.h>
+#    include <Common/WeakHash.h>
 
-#include <fsst_fwd.h>
+#    include <fsst_fwd.h>
 
 namespace DB
 {
 
 namespace ErrorCodes
 {
-extern const int NOT_IMPLEMENTED;
 extern const int LOGICAL_ERROR;
 }
 
@@ -48,8 +47,8 @@ private:
     };
 
     WrappedPtr string_column;
-    std::vector<UInt64> origin_lengths;
-    std::vector<BatchDsc> decoders;
+    std::vector<UInt64> origin_lengths; // STYLE_CHECK_ALLOW_STD_CONTAINERS
+    std::vector<BatchDsc> decoders; // STYLE_CHECK_ALLOW_STD_CONTAINERS
     mutable ColumnPtr decompressed_cache;
 
     /// Rows with index >= decompressed_start_index are stored uncompressed in string_column.
@@ -64,7 +63,9 @@ private:
     }
 
     /// Constructs a fully decompressed (empty) ColumnFSST for use by cloneEmpty.
-    struct DecompressedTag {};
+    struct DecompressedTag
+    {
+    };
     explicit ColumnFSST(MutableColumnPtr && _string_column, DecompressedTag)
         : string_column(std::move(_string_column))
         , decompressed_start_index(0)
@@ -75,7 +76,8 @@ private:
 
     std::optional<size_t> batchByRow(size_t row) const;
 
-    void filterInnerData(const Filter & filt, std::vector<UInt64> & lengths, std::vector<BatchDsc> & decoders) const;
+    void filterInnerData(
+        const Filter & filt, std::vector<UInt64> & lengths, std::vector<BatchDsc> & decoders) const; // STYLE_CHECK_ALLOW_STD_CONTAINERS
 
     MutableColumnPtr decompressAll() const;
 
@@ -97,12 +99,14 @@ private:
 public:
     using Base = COWHelper<IColumnHelper<ColumnFSST>, ColumnFSST>;
     static Ptr create(const ColumnPtr & nested) { return Base::create(nested->assumeMutable()); }
-    static Ptr create(ColumnPtr && nested, std::vector<BatchDsc> decoders, std::vector<UInt64> origin_lengths)
+    static Ptr
+    create(ColumnPtr && nested, std::vector<BatchDsc> decoders, std::vector<UInt64> origin_lengths) // STYLE_CHECK_ALLOW_STD_CONTAINERS
     {
         return Base::create(std::move(nested), std::move(decoders), std::move(origin_lengths));
     }
 
-    ColumnFSST(ColumnPtr && _nested, std::vector<BatchDsc> _decoders, std::vector<UInt64> _origin_lengths)
+    ColumnFSST(
+        ColumnPtr && _nested, std::vector<BatchDsc> _decoders, std::vector<UInt64> _origin_lengths) // STYLE_CHECK_ALLOW_STD_CONTAINERS
         : string_column(std::move(_nested))
         , origin_lengths(std::move(_origin_lengths))
         , decoders(std::move(_decoders))
@@ -171,10 +175,7 @@ public:
 
     void popBack(size_t n) override;
 
-    MutableColumnPtr cloneEmpty() const override
-    {
-        return Base::create(ColumnString::create(), DecompressedTag{});
-    }
+    MutableColumnPtr cloneEmpty() const override { return Base::create(ColumnString::create(), DecompressedTag{}); }
 
     void updateHashWithValue(size_t n, SipHash & hash) const override;
     WeakHash32 getWeakHash32() const override;
@@ -234,8 +235,8 @@ public:
     int doCompareAt(size_t n, size_t m, const IColumn & rhs, int nan_direction_hint) const override;
 
     WrappedPtr getStringColumn() const { return string_column; }
-    const std::vector<BatchDsc> & getDecoders() const { return decoders; }
-    const std::vector<UInt64> & getLengths() const { return origin_lengths; }
+    const std::vector<BatchDsc> & getDecoders() const { return decoders; } // STYLE_CHECK_ALLOW_STD_CONTAINERS
+    const std::vector<UInt64> & getLengths() const { return origin_lengths; } // STYLE_CHECK_ALLOW_STD_CONTAINERS
 
     ColumnPtr getDecompressed() const
     {
@@ -258,4 +259,4 @@ ColumnPtr recursiveRemoveFSST(const ColumnPtr & column);
 
 };
 
-// #endif
+#endif

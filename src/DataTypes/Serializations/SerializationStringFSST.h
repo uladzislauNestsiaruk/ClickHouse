@@ -29,7 +29,7 @@ class SerializationStringFSST final : public ISerialization
 {
 public:
     constexpr static size_t kCompressSize = 16 << 10; // 16KB
-    
+
     explicit SerializationStringFSST(SerializationPtr _nested)
         : nested(_nested)
     {

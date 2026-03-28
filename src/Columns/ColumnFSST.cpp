@@ -1,4 +1,3 @@
-#include <Common/Logger.h>
 #ifdef ENABLE_FSST
 
 #    include <algorithm>
@@ -10,8 +9,8 @@
 
 #    include <Columns/ColumnFSST.h>
 #    include <Columns/ColumnTuple.h>
-#    include <Columns/ColumnsNumber.h>
 #    include <Columns/ColumnsCommon.h>
+#    include <Columns/ColumnsNumber.h>
 #    include <Core/Field.h>
 #    include <base/types.h>
 #    include <Common/Exception.h>
@@ -19,8 +18,6 @@
 #    include <Common/SipHash.h>
 #    include <Common/WeakHash.h>
 #    include <Common/assert_cast.h>
-#    include <Common/logger_useful.h>
-
 
 #    include <fsst.h>
 
@@ -247,8 +244,8 @@ void ColumnFSST::doInsertRangeFrom(const IColumn & src, size_t start, size_t len
     const auto * src_fsst = typeid_cast<const ColumnFSST *>(&src);
 
     /// Fast path: both sides are compressed FSST with no uncompressed tail on either side.
-    if (src_fsst && !hasUncompressedTail() && !src_fsst->hasUncompressedTail()
-        && !isFullyDecompressed() && !src_fsst->isFullyDecompressed())
+    if (src_fsst && !hasUncompressedTail() && !src_fsst->hasUncompressedTail() && !isFullyDecompressed()
+        && !src_fsst->isFullyDecompressed())
     {
         size_t length_before_insert = string_column->size();
         string_column->insertRangeFrom(*src_fsst->string_column, start, length);
@@ -445,7 +442,8 @@ void ColumnFSST::updateHashFast(SipHash & hash) const
     }
 }
 
-void ColumnFSST::filterInnerData(const Filter & filt, std::vector<UInt64> & lengths_out, std::vector<BatchDsc> & decoders_out) const
+void ColumnFSST::filterInnerData(
+    const Filter & filt, std::vector<UInt64> & lengths_out, std::vector<BatchDsc> & decoders_out) const // STYLE_CHECK_ALLOW_STD_CONTAINERS
 {
     size_t dsc_ind = 0;
     for (size_t row = 0; row < std::min(filt.size(), origin_lengths.size()); row++)
@@ -504,11 +502,7 @@ struct ColumnFSST::ComparatorBase
 };
 
 void ColumnFSST::getPermutation(
-    PermutationSortDirection direction,
-    PermutationSortStability stability,
-    size_t limit,
-    int nan_direction_hint,
-    Permutation & res) const
+    PermutationSortDirection direction, PermutationSortStability stability, size_t limit, int nan_direction_hint, Permutation & res) const
 {
     if (isFullyDecompressed())
     {
@@ -591,8 +585,8 @@ ColumnPtr ColumnFSST::replicate(const Offsets & offsets) const
 
     auto replicated_string_column = string_column->replicate(offsets);
 
-    std::vector<UInt64> replicated_origin_lengths;
-    std::vector<BatchDsc> replicated_decoders;
+    std::vector<UInt64> replicated_origin_lengths; // STYLE_CHECK_ALLOW_STD_CONTAINERS
+    std::vector<BatchDsc> replicated_decoders; // STYLE_CHECK_ALLOW_STD_CONTAINERS
 
     replicated_origin_lengths.reserve(replicated_string_column->size());
     replicated_decoders.reserve(decoders.size());
@@ -635,8 +629,8 @@ ColumnPtr ColumnFSST::filter(const Filter & filt, ssize_t result_size_hint) cons
 
     auto filtered_string_column = string_column->filter(filt, result_size_hint);
 
-    std::vector<BatchDsc> filtered_decoders;
-    std::vector<UInt64> filtered_origin_lengths;
+    std::vector<BatchDsc> filtered_decoders; // STYLE_CHECK_ALLOW_STD_CONTAINERS
+    std::vector<UInt64> filtered_origin_lengths; // STYLE_CHECK_ALLOW_STD_CONTAINERS
 
     filtered_origin_lengths.reserve(result_size_hint > 0 ? result_size_hint : string_column->size());
     filterInnerData(filt, filtered_origin_lengths, filtered_decoders);
@@ -665,8 +659,8 @@ void ColumnFSST::filter(const Filter & filt)
 
     string_column->filter(filt);
 
-    std::vector<BatchDsc> filtered_decoders;
-    std::vector<UInt64> filtered_origin_lengths;
+    std::vector<BatchDsc> filtered_decoders; // STYLE_CHECK_ALLOW_STD_CONTAINERS
+    std::vector<UInt64> filtered_origin_lengths; // STYLE_CHECK_ALLOW_STD_CONTAINERS
 
     filterInnerData(filt, filtered_origin_lengths, filtered_decoders);
 

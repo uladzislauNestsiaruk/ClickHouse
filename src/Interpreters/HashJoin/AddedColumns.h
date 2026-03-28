@@ -291,10 +291,10 @@ private:
             /// ColumnFSST is a compressed ColumnString; treat them as compatible for insertFrom.
             const IColumn * effective_from = column_from_block;
             const IColumn * effective_dest = dest_column;
-            if (typeid_cast<const ColumnFSST *>(effective_from))
-                effective_from = typeid_cast<const ColumnFSST *>(effective_from)->getStringColumn().get();
-            if (typeid_cast<const ColumnFSST *>(effective_dest))
-                effective_dest = typeid_cast<const ColumnFSST *>(effective_dest)->getStringColumn().get();
+            if (const auto * column_fsst = typeid_cast<const ColumnFSST *>(effective_from))
+                effective_from = column_fsst->getStringColumn().get();
+            if (const auto * column_fsst = typeid_cast<const ColumnFSST *>(effective_dest))
+                effective_dest = column_fsst->getStringColumn().get();
 
             /** Using dest_column->structureEquals(*column_from_block) will not work for low cardinality columns,
               * because dictionaries can be different, while calling insertFrom on them is safe, for example:
