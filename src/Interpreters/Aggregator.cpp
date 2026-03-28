@@ -1708,7 +1708,9 @@ void Aggregator::prepareAggregateInstructions(
                 ? aggregate_columns[i][j]->getPtr()
                 : recursiveRemoveSparse(aggregate_columns[i][j]->getPtr());
 
+#ifdef ENABLE_FSST
             full_column = recursiveRemoveFSST(full_column);
+#endif
             full_column = recursiveRemoveLowCardinality(full_column);
             if (full_column.get() != aggregate_columns[i][j])
             {

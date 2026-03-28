@@ -167,7 +167,9 @@ using AsyncInsertInfoPtr = std::shared_ptr<AsyncInsertInfo>;
 /// and their structure must be equal (e.g. compareAt).
 void convertToFullIfConst(Chunk & chunk);
 void convertToFullIfSparse(Chunk & chunk);
+#ifdef ENABLE_FSST
 void convertToFullIfFSST(Chunk & chunk);
+#endif
 void removeSpecialColumnRepresentations(Chunk & chunk);
 
 /// Analog of materializeBlock: converts const columns to full and removes sparse/replicated representations.

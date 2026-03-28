@@ -387,6 +387,9 @@ void SerializationStringFSST::serializeBinaryBulkWithMultipleStreams(
 
     auto decoder_it = std::lower_bound(
         decoders.begin(), decoders.end(), offset, [](const auto & decoder, size_t val) { return decoder.batch_start_index < val; });
+    if (decoder_it != decoders.begin())
+        --decoder_it;
+
     for (size_t ind = offset; ind < offset + limit; ind++)
     {
         while (decoder_it != decoders.end() && decoder_it->batch_start_index < ind)
@@ -465,8 +468,6 @@ void SerializationStringFSST::deserializeBinaryBulkWithMultipleStreams(
     size_t new_states_begin = states.size();
 
     /* read offsets */
-    /// Account for rows remaining in the leftover state from a previous call
-    /// so we don't over-read from the stream and then lose unconsumed states.
     size_t leftover_rows = 0;
     if (!states.empty())
         leftover_rows = states[0]->offsets.size() - states[0]->current_ind;

@@ -110,14 +110,19 @@ std::tuple<SerializationPtr, SerializationInfoPtr, ColumnPtr> NativeWriter::getS
             if (column.type->isNullable())
                 result_column = recursiveRemoveSparse(result_column);
         }
-
+#ifdef ENABLE_FSST
         result_column = recursiveRemoveFSST(result_column);
+#endif
         auto info = column.type->getSerializationInfo(*result_column);
         return {column.type->getSerialization(*info), info, result_column};
     }
 
+#ifdef ENABLE_FSST
     auto remove_fsst = recursiveRemoveFSST(column.column);
     return {column.type->getDefaultSerialization(), nullptr, recursiveRemoveSparse(remove_fsst->convertToFullColumnIfReplicated())};
+#else
+    return {column.type->getDefaultSerialization(), nullptr, recursiveRemoveSparse(column.column->convertToFullColumnIfReplicated())};
+#endif
 }
 
 size_t NativeWriter::write(const Block & block)

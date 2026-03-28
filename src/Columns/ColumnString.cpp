@@ -606,7 +606,11 @@ void ColumnString::shrinkToFit()
 
 bool ColumnString::structureEquals(const IColumn & rhs) const
 {
+#ifdef ENABLE_FSST
     return typeid(rhs) == typeid(ColumnString) || typeid(rhs) == typeid(ColumnFSST);
+#else
+    return typeid(rhs) == typeid(ColumnString);
+#endif
 }
 
 void ColumnString::getExtremes(Field & min, Field & max, size_t start, size_t end) const

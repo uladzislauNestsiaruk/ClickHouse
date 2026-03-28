@@ -203,6 +203,7 @@ void convertToFullIfSparse(Chunk & chunk)
     chunk.setColumns(std::move(columns), num_rows);
 }
 
+#ifdef ENABLE_FSST
 void convertToFullIfFSST(Chunk & chunk)
 {
     size_t num_rows = chunk.getNumRows();
@@ -211,6 +212,7 @@ void convertToFullIfFSST(Chunk & chunk)
         column = recursiveRemoveFSST(column);
     chunk.setColumns(std::move(columns), num_rows);
 }
+#endif
 
 void removeSpecialColumnRepresentations(Chunk & chunk)
 {

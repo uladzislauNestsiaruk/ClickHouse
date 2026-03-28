@@ -4,8 +4,6 @@
 #include <Storages/StorageInMemoryMetadata.h>
 #include <Formats/MarkInCompressedFile.h>
 #include <IO/NullWriteBuffer.h>
-#include <Common/logger_useful.h>
-#include <typeinfo>
 
 namespace DB
 {
@@ -332,17 +330,6 @@ void MergeTreeDataPartWriterCompact::writeDataBlock(const Block & block, const G
                 stream_getter, stream_mark_getter, granule.start_row, granule.rows_to_write, !data_written, getSerializationSettings());
 
             /// Each type always have at least one substream
-            if (!prev_stream)
-            {
-                auto ser = getSerialization(name_and_type->name);
-                throw Exception(ErrorCodes::LOGICAL_ERROR,
-                    "No stream was written for column {} (type: {}, rows_to_write: {}, getter_calls: {}, "
-                    "kind_stack: {}). "
-                    "This likely means serializeBinaryBulkWithMultipleStreams did not call settings.getter().",
-                    name_and_type->name, name_and_type->type->getName(), granule.rows_to_write,
-                    getter_call_count,
-                    ISerialization::kindStackToString(ser->getKindStack()));
-            }
             prev_stream->hashing_buf.next();
         }
 

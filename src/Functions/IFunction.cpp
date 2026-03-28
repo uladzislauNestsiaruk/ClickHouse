@@ -375,11 +375,13 @@ ColumnPtr IExecutableFunction::executeWithoutLowCardinalityColumns(
     return res;
 }
 
+#ifdef ENABLE_FSST
 static void convertFSSTColumnsToFull(ColumnsWithTypeAndName & args)
 {
     for (auto & column : args)
         column.column = recursiveRemoveFSST(column.column);
 }
+#endif
 
 static void convertSparseColumnsToFull(ColumnsWithTypeAndName & args)
 {
@@ -461,7 +463,9 @@ ColumnPtr IExecutableFunction::execute(
     checkFunctionArgumentSizes(arguments, input_rows_count);
 
     auto args = arguments;
+#ifdef ENABLE_FSST
     convertFSSTColumnsToFull(args);
+#endif
 
     if (useDefaultImplementationForReplicatedColumns())
     {

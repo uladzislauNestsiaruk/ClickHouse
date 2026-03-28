@@ -93,8 +93,9 @@ Block materializeColumnsFromRightBlock(Block block, const Block & sample_block, 
                 actual_column = replicated_column->getNestedColumn();
             /// Sparse and FSST columns are not supported on the right side.
             actual_column = recursiveRemoveSparse(actual_column);
+#ifdef ENABLE_FSST
             actual_column = recursiveRemoveFSST(actual_column);
-
+#endif
             if (actual_column->lowCardinality() && !sample_column.column->lowCardinality())
             {
                 actual_column = actual_column->convertToFullColumnIfLowCardinality();

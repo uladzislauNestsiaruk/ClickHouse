@@ -288,14 +288,16 @@ private:
             if (const auto * column_replicated = typeid_cast<const ColumnReplicated *>(dest_column))
                 dest_column = column_replicated->getNestedColumn().get();
 
-            /// ColumnFSST is a compressed ColumnString; treat them as compatible for insertFrom.
             const IColumn * effective_from = column_from_block;
             const IColumn * effective_dest = dest_column;
+
+            /* ColumnFSST = compressed ColumnString */
+#ifdef ENABLE_FSST
             if (const auto * column_fsst = typeid_cast<const ColumnFSST *>(effective_from))
                 effective_from = column_fsst->getStringColumn().get();
             if (const auto * column_fsst = typeid_cast<const ColumnFSST *>(effective_dest))
                 effective_dest = column_fsst->getStringColumn().get();
-
+#endif
             /** Using dest_column->structureEquals(*column_from_block) will not work for low cardinality columns,
               * because dictionaries can be different, while calling insertFrom on them is safe, for example:
               * ColumnLowCardinality(size = 0, UInt8(size = 0), ColumnUnique(size = 1, String(size = 1)))
