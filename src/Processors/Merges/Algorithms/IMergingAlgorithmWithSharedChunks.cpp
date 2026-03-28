@@ -49,7 +49,10 @@ void IMergingAlgorithmWithSharedChunks::consume(Input & input, size_t source_num
 {
     removeReplicatedFromSortingColumns(header, input, description);
     removeConstAndSparse(input);
+
+#ifdef ENABLE_FSST
     removeFSST(input);
+#endif
 
     auto & source = sources[source_num];
     source.skip_last_row = input.skip_last_row;

@@ -856,7 +856,9 @@ void SummingSortedAlgorithm::consume(Input & input, size_t source_num)
 {
     removeReplicatedFromSortingColumns(header, input, description);
     removeConstAndSparse(input);
+#ifdef ENABLE_FSST
     removeFSST(input);
+#endif
     preprocessChunk(input.chunk, columns_definition);
     updateCursor(input, source_num);
 }

@@ -65,6 +65,7 @@ public:
             removeConstAndSparse(input);
     }
 
+#ifdef ENABLE_FSST
     static void removeFSST(Input & input)
     {
         convertToFullIfFSST(input.chunk);
@@ -75,6 +76,7 @@ public:
         for (auto & input : inputs)
             removeFSST(input);
     }
+#endif
 
     static void removeReplicatedFromSortingColumns(const SharedHeader & header, Input & input, const SortDescription & description)
     {

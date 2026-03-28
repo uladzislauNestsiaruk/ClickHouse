@@ -15,7 +15,7 @@
 #    include <Common/PODArray.h>
 #    include <Common/WeakHash.h>
 
-#    include <fsst_fwd.h>
+struct fsst_decoder_t;
 
 namespace DB
 {

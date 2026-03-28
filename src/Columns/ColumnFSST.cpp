@@ -602,7 +602,7 @@ ColumnPtr ColumnFSST::replicate(const Offsets & offsets) const
 
         if (dsc_ind > 0 && dsc_ind <= decoders.size() && decoders[dsc_ind - 1].batch_start_index <= row)
         {
-            replicated_decoders.emplace_back(decoders[dsc_ind]);
+            replicated_decoders.emplace_back(decoders[dsc_ind - 1]);
             replicated_decoders.back().batch_start_index = replicated_origin_lengths.size();
             ++dsc_ind;
         }

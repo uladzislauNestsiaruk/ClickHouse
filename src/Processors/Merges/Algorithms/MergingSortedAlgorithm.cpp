@@ -113,7 +113,9 @@ void MergingSortedAlgorithm::consume(Input & input, size_t source_num)
 {
     removeReplicatedFromSortingColumns(header, input, description);
     removeConstAndSparse(input);
+#ifdef ENABLE_FSST
     removeFSST(input);
+#endif
     current_inputs[source_num].swap(input);
     cursors[source_num].reset(current_inputs[source_num].chunk.getColumns(), *header, current_inputs[source_num].chunk.getNumRows());
 

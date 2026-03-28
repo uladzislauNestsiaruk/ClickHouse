@@ -9,6 +9,6 @@ INSERT INTO fsst_test_table SELECT number, ('') FROM numbers(2048);
 INSERT INTO fsst_test_table SELECT number, ('тест на славянина') FROM numbers(2048);
 
 SELECT sum(id) AS sum1 FROM fsst_test_table WHERE s = 'hello world';
-SELECT * FROM fsst_test_table WHERE id > 100 AND id < 200;
+SELECT * FROM fsst_test_table WHERE id > 100 AND id < 200 ORDER BY s, id;
 
 DROP TABLE fsst_test_table;
