@@ -9,9 +9,6 @@
 #include <Common/ThreadPool_fwd.h>
 #include <Formats/MarkInCompressedFile.h>
 #include <Storages/MergeTree/MergeTreeDataPartType.h>
-#include <base/demangle.h>
-#include <Common/ThreadPool_fwd.h>
-#include <Common/typeid_cast.h>
 
 #include <boost/noncopyable.hpp>
 #include <unordered_map>

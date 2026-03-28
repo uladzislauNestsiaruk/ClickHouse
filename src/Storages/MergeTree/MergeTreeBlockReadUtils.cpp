@@ -1,4 +1,5 @@
 #include <DataTypes/DataTypesNumber.h>
+#include <Interpreters/ExpressionActions.h>
 #include <Storages/MergeTree/LoadedMergeTreeDataPartInfoForReader.h>
 #include <Storages/MergeTree/MergeTreeBlockReadUtils.h>
 #include <Storages/MergeTree/MergeTreeData.h>
