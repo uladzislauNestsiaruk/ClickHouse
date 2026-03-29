@@ -555,6 +555,10 @@ void ColumnFSST::updatePermutation(
 
 void ColumnFSST::getExtremes(Field & min, Field & max, size_t start, size_t end) const
 {
+    if (start >= end) {
+        return;
+    }
+    
     if (isFullyDecompressed())
     {
         string_column->getExtremes(min, max, start, end);
