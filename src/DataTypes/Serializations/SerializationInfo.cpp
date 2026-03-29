@@ -75,7 +75,7 @@ void fsstSampleAndCompress(const IColumn & column, SerializationInfo::Data & dat
     for (size_t i = 0; i < rows; i += step)
     {
         auto sv = col_string->getDataAt(i);
-        if (sv.size() > 0)
+        if (!sv.empty())
         {
             sample_ptrs.push_back(reinterpret_cast<const unsigned char *>(sv.data()));
             sample_lengths.push_back(sv.size());
@@ -175,7 +175,7 @@ void SerializationInfo::add(const IColumn & column)
     data.add(column);
 
 #ifdef ENABLE_FSST
-    if (data.is_string_column && column.size() > 0)
+    if (data.is_string_column && !column.empty())
         fsstSampleAndCompress(column, data, settings);
 #endif
 

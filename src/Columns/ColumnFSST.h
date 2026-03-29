@@ -15,7 +15,7 @@
 #    include <Common/PODArray.h>
 #    include <Common/WeakHash.h>
 
-struct fsst_decoder_t;
+#   include "fsst.h"
 
 namespace DB
 {
@@ -24,7 +24,6 @@ namespace ErrorCodes
 {
 extern const int LOGICAL_ERROR;
 }
-
 
 class ColumnFSST final : public COWHelper<IColumnHelper<ColumnFSST>, ColumnFSST>
 {
@@ -230,15 +229,15 @@ public:
         string_column->getIndicesOfNonDefaultRows(indices, from, limit);
     }
 
-#if !defined(DEBUG_OR_SANITIZER_BUILD)
+#    if !defined(DEBUG_OR_SANITIZER_BUILD)
     void insertRangeFrom(const IColumn & src, size_t start, size_t length) override;
 
     [[nodiscard]] int compareAt(size_t n, size_t m, const IColumn & rhs, int nan_direction_hint) const override;
-#else
+#    else
     void doInsertRangeFrom(const IColumn & src, size_t start, size_t length) override;
 
     int doCompareAt(size_t n, size_t m, const IColumn & rhs, int nan_direction_hint) const override;
-#endif
+#    endif
 
     WrappedPtr getStringColumn() const { return string_column; }
     const std::vector<BatchDsc> & getDecoders() const { return decoders; } // STYLE_CHECK_ALLOW_STD_CONTAINERS
