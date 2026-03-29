@@ -350,7 +350,7 @@ SerializationPtr IDataType::wrapSerializationBasedOnKindStack(
         else if (kind == ISerialization::Kind::FSST)
         {
 #ifdef ENABLE_FSST
-            serialization = std::make_shared<SerializationStringFSST>(serialization);
+            serialization = SerializationStringFSST::create(serialization);
 #endif
         }
         else if (kind == ISerialization::Kind::DETACHED)

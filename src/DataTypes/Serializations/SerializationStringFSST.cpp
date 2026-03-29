@@ -15,11 +15,9 @@
 #    include <Common/Exception.h>
 #    include <Common/PODArray.h>
 #    include <Common/PODArray_fwd.h>
+#    include <Common/SipHash.h>
 #    include <Common/assert_cast.h>
 #    include <Common/typeid_cast.h>
-
-#    pragma GCC diagnostic ignored "-Wunused-parameter"
-
 
 #    include <fsst.h>
 
@@ -29,6 +27,21 @@ namespace DB
 namespace ErrorCodes
 {
 extern const int INCORRECT_DATA;
+}
+
+UInt128 SerializationStringFSST::getHash(const SerializationPtr & nested)
+{
+    SipHash hash;
+    hash.update("StringFSST");
+    hash.update(nested->getHash());
+    return hash.get128();
+}
+
+SerializationPtr SerializationStringFSST::create(const SerializationPtr & nested)
+{
+    if (!nested->supportsPooling())
+        return std::shared_ptr<ISerialization>(new SerializationStringFSST(nested));
+    return ISerialization::pooled(getHash(nested), [&] { return new SerializationStringFSST(nested); });
 }
 
 template <>
@@ -249,11 +262,11 @@ const IColumn & SerializationStringFSST::resolveColumn(const IColumn & column, C
         holder = col_fsst->convertToFullIfNeeded();
         return *holder;
     }
-    return column;
+    return column; // NOLINT(bugprone-return-const-ref-from-parameter)
 }
 
 void SerializationStringFSST::serializeBinary(
-    const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
+    const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & /*settings*/) const
 {
     String out;
     assert_cast<const ColumnFSST &>(column).decompressRow(row_num, out);
@@ -262,7 +275,7 @@ void SerializationStringFSST::serializeBinary(
 }
 
 void SerializationStringFSST::serializeTextEscaped(
-    const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
+    const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & /*settings*/) const
 {
     String out;
     assert_cast<const ColumnFSST &>(column).decompressRow(row_num, out);
@@ -278,7 +291,7 @@ void SerializationStringFSST::serializeTextQuoted(
 }
 
 void SerializationStringFSST::serializeTextCSV(
-    const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & settings) const
+    const IColumn & column, size_t row_num, WriteBuffer & ostr, const FormatSettings & /*settings*/) const
 {
     String out;
     assert_cast<const ColumnFSST &>(column).decompressRow(row_num, out);
@@ -303,7 +316,7 @@ void SerializationStringFSST::serializeTextJSON(
 
 SerializationPtr SerializationStringFSST::SubcolumnCreator::create(const SerializationPtr & string_nested, const DataTypePtr &) const
 {
-    return std::make_shared<SerializationStringFSST>(string_nested);
+    return SerializationStringFSST::create(string_nested);
 }
 
 ColumnPtr SerializationStringFSST::SubcolumnCreator::create(const ColumnPtr & prev) const

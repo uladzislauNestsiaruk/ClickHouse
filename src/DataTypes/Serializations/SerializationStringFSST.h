@@ -27,13 +27,19 @@ struct SerializeFSSTState : public ISerialization::SerializeBinaryBulkState
 
 class SerializationStringFSST final : public ISerialization
 {
-public:
-    constexpr static size_t kCompressSize = 16 << 10; // 16KB
-
+private:
     explicit SerializationStringFSST(SerializationPtr _nested)
         : nested(_nested)
     {
     }
+
+public:
+    constexpr static size_t kCompressSize = 16 << 10; // 16KB
+
+    static UInt128 getHash(const SerializationPtr & nested);
+    static SerializationPtr create(const SerializationPtr & nested);
+
+    bool supportsPooling() const override { return nested->supportsPooling(); }
 
     KindStack getKindStack() const override;
 
