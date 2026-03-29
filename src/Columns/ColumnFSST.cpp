@@ -246,7 +246,6 @@ void ColumnFSST::doInsertRangeFrom(const IColumn & src, size_t start, size_t len
         throw Exception(ErrorCodes::PARAMETER_OUT_OF_BOUND, "Parameter out of bound in ColumnFSST::insertRangeFrom method.");
 
     const auto * src_fsst = typeid_cast<const ColumnFSST *>(&src);
-
     /// Fast path: both sides are compressed FSST with no uncompressed tail on either side.
     if (src_fsst && !hasUncompressedTail() && !src_fsst->hasUncompressedTail() && !isFullyDecompressed()
         && !src_fsst->isFullyDecompressed())
@@ -261,8 +260,10 @@ void ColumnFSST::doInsertRangeFrom(const IColumn & src, size_t start, size_t len
                && src_fsst->decoders[first_batch_to_insert].batch_start_index < start + length)
         {
             decoders.emplace_back(src_fsst->decoders[first_batch_to_insert]);
-            decoders.back().batch_start_index
-                = length_before_insert + std::max(0ul, src_fsst->decoders[first_batch_to_insert].batch_start_index - start);
+            size_t src_offset = src_fsst->decoders[first_batch_to_insert].batch_start_index < start
+                ? 0
+                : src_fsst->decoders[first_batch_to_insert].batch_start_index - start;
+            decoders.back().batch_start_index = length_before_insert + src_offset;
             ++first_batch_to_insert;
         }
         return;
@@ -270,18 +271,8 @@ void ColumnFSST::doInsertRangeFrom(const IColumn & src, size_t start, size_t len
 
     /// Slow path: decompress source rows and append to uncompressed tail.
     ensureUncompressedTail();
-    if (src_fsst)
-    {
-        /// Source is FSST — decompress the requested range and insert.
-        /// Use convertToFullIfNeeded instead of getDecompressed to avoid caching
-        /// the decompressed data in the source column (which would double memory during merge).
-        auto decompressed_src = src_fsst->convertToFullIfNeeded();
-        string_column->insertRangeFrom(*decompressed_src, start, length);
-    }
-    else
-    {
-        string_column->insertRangeFrom(src, start, length);
-    }
+    auto decompressed_src = src_fsst ? src_fsst->convertToFullIfNeeded() : src.getPtr();
+    string_column->insertRangeFrom(*decompressed_src, start, length);
 }
 
 #    if !defined(DEBUG_OR_SANITIZER_BUILD)

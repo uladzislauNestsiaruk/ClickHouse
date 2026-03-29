@@ -397,7 +397,7 @@ void SerializationStringFSST::serializeBinaryBulkWithMultipleStreams(
 
         serialize_state->compressed_data.emplace_back(string_column->getDataAt(ind));
         serialize_state->origin_lengths.emplace_back(origin_lengths[ind]);
-        state_size += origin_lengths.back();
+        state_size += serialize_state->origin_lengths.back();
 
         if (decoder_it != decoders.end() && decoder_it->batch_start_index == ind)
             serialize_state->decoder = *decoder_it->decoder;
