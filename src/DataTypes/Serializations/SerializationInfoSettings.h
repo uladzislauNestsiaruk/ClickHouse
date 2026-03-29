@@ -15,7 +15,7 @@ struct SerializationInfoSettings
     bool choose_kind = false;
 
     double min_avg_string_length_for_fsst = 8.0;
-    size_t min_total_bytes_for_fsst = 16384;
+    uint64_t min_total_bytes_for_fsst = 16384;
     /// Maximum trial compression ratio to accept FSST (lower = better compression).
     /// 0.85 means FSST must achieve at least 15% compression on a sample to be used.
     double max_fsst_compression_ratio = 0.85;

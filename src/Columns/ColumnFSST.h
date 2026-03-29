@@ -230,9 +230,15 @@ public:
         string_column->getIndicesOfNonDefaultRows(indices, from, limit);
     }
 
+#if !defined(DEBUG_OR_SANITIZER_BUILD)
+    void insertRangeFrom(const IColumn & src, size_t start, size_t length) override;
+
+    [[nodiscard]] int compareAt(size_t n, size_t m, const IColumn & rhs, int nan_direction_hint) const override;
+#else
     void doInsertRangeFrom(const IColumn & src, size_t start, size_t length) override;
 
     int doCompareAt(size_t n, size_t m, const IColumn & rhs, int nan_direction_hint) const override;
+#endif
 
     WrappedPtr getStringColumn() const { return string_column; }
     const std::vector<BatchDsc> & getDecoders() const { return decoders; } // STYLE_CHECK_ALLOW_STD_CONTAINERS
