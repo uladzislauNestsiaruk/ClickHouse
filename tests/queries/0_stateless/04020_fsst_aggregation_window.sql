@@ -3,7 +3,7 @@
 
 DROP TABLE IF EXISTS test_fsst_agg;
 CREATE TABLE test_fsst_agg (id UInt64, region String, service String, latency_ms UInt32) ENGINE = MergeTree ORDER BY id
-SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
+SETTINGS allow_fsst_serialization = 1, min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
 
 INSERT INTO test_fsst_agg SELECT number, concat('region-', toString(number % 4), '-datacenter-east'), concat('service-', toString(number % 10), '-api-gateway'), (number * 7 + 13) % 5000 FROM numbers(10000);
 

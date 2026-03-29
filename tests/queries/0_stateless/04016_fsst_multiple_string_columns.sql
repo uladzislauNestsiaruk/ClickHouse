@@ -4,7 +4,7 @@
 DROP TABLE IF EXISTS test_fsst_multi;
 CREATE TABLE test_fsst_multi (id UInt64, short_code String, log_message String, url String, metric Float64, event_date Date)
 ENGINE = MergeTree ORDER BY id
-SETTINGS ratio_of_defaults_for_sparse_serialization = 0.9, min_avg_string_length_for_fsst_serialization = 8.0,
+SETTINGS allow_fsst_serialization = 1, ratio_of_defaults_for_sparse_serialization = 0.9, min_avg_string_length_for_fsst_serialization = 8.0,
     min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 0.85;
 
 INSERT INTO test_fsst_multi SELECT number, substring('ABCDEFGHIJKLMNOPQRSTUVWXYZ', (number % 26) + 1, 2),

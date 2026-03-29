@@ -219,6 +219,12 @@ namespace ErrorCodes
     Random/incompressible data (UUIDs, hashes) typically yields ratio ~1.0
     and will not be FSST-compressed. Set to 1.0 to disable this check.
     )", 0) \
+    DECLARE(Bool, allow_fsst_serialization, false, R"(
+    Enable FSST (Fast Static Symbol Table) compression for String columns.
+    When false (default), FSST serialization is never used regardless of other
+    FSST thresholds. When true, the heuristic in `useFSST` decides based on
+    column statistics (average string length, total bytes, trial compression ratio).
+    )", 0) \
     DECLARE(Bool, replace_long_file_name_to_hash, true, R"(
     If the file name for column is too long (more than 'max_file_name_length'
     bytes) replace it to SipHash128

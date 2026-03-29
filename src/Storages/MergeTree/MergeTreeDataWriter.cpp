@@ -92,6 +92,7 @@ namespace MergeTreeSetting
     extern const MergeTreeSettingsFloat min_avg_string_length_for_fsst_serialization;
     extern const MergeTreeSettingsUInt64 min_total_bytes_for_fsst_serialization;
     extern const MergeTreeSettingsFloat max_fsst_compression_ratio;
+    extern const MergeTreeSettingsBool allow_fsst_serialization;
     extern const MergeTreeSettingsMergeTreeSerializationInfoVersion serialization_info_version;
     extern const MergeTreeSettingsMergeTreeStringSerializationVersion string_serialization_version;
     extern const MergeTreeSettingsMergeTreeNullableSerializationVersion nullable_serialization_version;
@@ -823,6 +824,7 @@ MergeTreeTemporaryPartPtr MergeTreeDataWriter::writeTempPartImpl(
     settings.min_avg_string_length_for_fsst = (*data_settings)[MergeTreeSetting::min_avg_string_length_for_fsst_serialization];
     settings.min_total_bytes_for_fsst = (*data_settings)[MergeTreeSetting::min_total_bytes_for_fsst_serialization];
     settings.max_fsst_compression_ratio = (*data_settings)[MergeTreeSetting::max_fsst_compression_ratio];
+    settings.allow_fsst_serialization = (*data_settings)[MergeTreeSetting::allow_fsst_serialization];
 
     SerializationInfoByName infos(columns, settings);
     infos.add(block);
@@ -1013,6 +1015,7 @@ MergeTreeTemporaryPartPtr MergeTreeDataWriter::writeProjectionPartImpl(
     settings.min_avg_string_length_for_fsst = (*data_settings)[MergeTreeSetting::min_avg_string_length_for_fsst_serialization];
     settings.min_total_bytes_for_fsst = (*data_settings)[MergeTreeSetting::min_total_bytes_for_fsst_serialization];
     settings.max_fsst_compression_ratio = (*data_settings)[MergeTreeSetting::max_fsst_compression_ratio];
+    settings.allow_fsst_serialization = (*data_settings)[MergeTreeSetting::allow_fsst_serialization];
 
     SerializationInfoByName infos(columns, settings);
     infos.add(block);

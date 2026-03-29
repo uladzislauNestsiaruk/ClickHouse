@@ -5,7 +5,10 @@ SET allow_experimental_parallel_reading_from_replicas = 0;
 
 DROP TABLE IF EXISTS test_fsst_conc;
 CREATE TABLE test_fsst_conc (id UInt64, batch String, data String) ENGINE = MergeTree ORDER BY id
-SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 8192, max_fsst_compression_ratio = 0.85;
+SETTINGS allow_fsst_serialization = 1, min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 8192, max_fsst_compression_ratio = 0.85;
+
+-- Stop background merges to ensure each insert creates a separate FSST part.
+SYSTEM STOP MERGES test_fsst_conc;
 
 -- 10 separate inserts creating 10 parts.
 INSERT INTO test_fsst_conc SELECT number,       'batch_01_identifier', concat('Data from batch 01, row ', toString(number),       ' padding=', repeat('x', 30)) FROM numbers(500);
@@ -28,6 +31,7 @@ SELECT 'pre_batches', count(DISTINCT batch) FROM test_fsst_conc;
 SELECT 'pre_checksum', sum(cityHash64(id, batch, data)) FROM test_fsst_conc;
 
 -- Merge.
+SYSTEM START MERGES test_fsst_conc;
 OPTIMIZE TABLE test_fsst_conc FINAL;
 
 -- Post-merge checks.

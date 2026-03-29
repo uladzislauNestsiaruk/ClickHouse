@@ -6,7 +6,7 @@ SET optimize_functions_to_subcolumns = 0;
 
 DROP TABLE IF EXISTS test_fsst_func;
 CREATE TABLE test_fsst_func (id UInt64, s String) ENGINE = MergeTree ORDER BY id
-SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
+SETTINGS allow_fsst_serialization = 1, min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
 
 INSERT INTO test_fsst_func SELECT number, concat('Event type=INFO host=server-', toString(number % 10), '.example.com timestamp=2025-01-', lpad(toString((number % 28) + 1), 2, '0'), ' message="Request processed in ', toString(number * 3 % 1000), 'ms"') FROM numbers(2000);
 

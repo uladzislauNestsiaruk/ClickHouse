@@ -2,7 +2,7 @@
 DROP TABLE IF EXISTS fsst_test_table;
 CREATE TABLE fsst_test_table (id UInt64, s String)
 ENGINE = MergeTree() ORDER BY id
-SETTINGS min_rows_for_wide_part = 0, min_bytes_for_wide_part = 0;
+SETTINGS allow_fsst_serialization = 1, min_rows_for_wide_part = 0, min_bytes_for_wide_part = 0;
 
 INSERT INTO fsst_test_table SELECT number, ('hello world') FROM numbers(2048);
 INSERT INTO fsst_test_table SELECT number, ('') FROM numbers(2048);

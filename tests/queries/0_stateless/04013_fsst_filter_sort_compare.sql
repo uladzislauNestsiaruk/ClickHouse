@@ -5,7 +5,7 @@ SET allow_experimental_parallel_reading_from_replicas = 0;
 
 DROP TABLE IF EXISTS test_fsst_fsc;
 CREATE TABLE test_fsst_fsc (id UInt64, category String, message String) ENGINE = MergeTree ORDER BY id
-SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
+SETTINGS allow_fsst_serialization = 1, min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
 
 INSERT INTO test_fsst_fsc SELECT number, concat('category_', toString(number % 5)), concat('Error in module ', toString(number % 20), ': timeout after ', toString(number * 7 % 10000), 'ms waiting for response from backend-', toString(number % 8), '.internal.corp') FROM numbers(5000);
 
@@ -31,7 +31,7 @@ SELECT 'group_by', category, count() AS cnt FROM test_fsst_fsc GROUP BY category
 -- JOIN.
 DROP TABLE IF EXISTS test_fsst_fsc_rhs;
 CREATE TABLE test_fsst_fsc_rhs (cat String, priority UInt8) ENGINE = MergeTree ORDER BY cat
-SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 0, max_fsst_compression_ratio = 1.0;
+SETTINGS allow_fsst_serialization = 1, min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 0, max_fsst_compression_ratio = 1.0;
 INSERT INTO test_fsst_fsc_rhs VALUES ('category_0', 1), ('category_1', 2), ('category_2', 3), ('category_3', 4), ('category_4', 5);
 
 SELECT 'join', l.category, r.priority, count() AS cnt FROM test_fsst_fsc l JOIN test_fsst_fsc_rhs r ON l.category = r.cat GROUP BY l.category, r.priority ORDER BY l.category;

@@ -4,7 +4,7 @@
 -- Part 1: Compact parts.
 DROP TABLE IF EXISTS test_fsst_compact;
 CREATE TABLE test_fsst_compact (id UInt64, msg String) ENGINE = MergeTree ORDER BY id
-SETTINGS min_bytes_for_wide_part = 10000000, min_avg_string_length_for_fsst_serialization = 8.0,
+SETTINGS allow_fsst_serialization = 1, min_bytes_for_wide_part = 10000000, min_avg_string_length_for_fsst_serialization = 8.0,
     min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
 
 INSERT INTO test_fsst_compact SELECT number, concat('Compact part message #', toString(number), ' with repeated padding: ', repeat('compact_data ', 5)) FROM numbers(2000);
@@ -20,7 +20,7 @@ DROP TABLE test_fsst_compact;
 -- Part 2: Wide parts.
 DROP TABLE IF EXISTS test_fsst_wide;
 CREATE TABLE test_fsst_wide (id UInt64, msg String) ENGINE = MergeTree ORDER BY id
-SETTINGS min_bytes_for_wide_part = 1, min_avg_string_length_for_fsst_serialization = 8.0,
+SETTINGS allow_fsst_serialization = 1, min_bytes_for_wide_part = 1, min_avg_string_length_for_fsst_serialization = 8.0,
     min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
 
 INSERT INTO test_fsst_wide SELECT number, concat('Wide part message #', toString(number), ' with repeated padding: ', repeat('wide_format_data ', 5)) FROM numbers(2000);
@@ -38,7 +38,10 @@ SYSTEM START MERGES test_fsst_wide;
 OPTIMIZE TABLE test_fsst_wide FINAL;
 
 SELECT 'wide_merged_count', count() FROM test_fsst_wide;
-SELECT 'wide_merged_sample', msg FROM test_fsst_wide WHERE id = 3000;
+-- Verify all rows are correct after merge (checksum-based to avoid non-deterministic row lookup).
+SELECT 'wide_merged_integrity', count() FROM test_fsst_wide
+    WHERE (id < 2000  AND msg = concat('Wide part message #', toString(id), ' with repeated padding: ', repeat('wide_format_data ', 5)))
+       OR (id >= 2000 AND msg = concat('Wide part 2 message #', toString(id), ' with different padding: ', repeat('second_part_data ', 5)));
 CHECK TABLE test_fsst_wide;
 
 DROP TABLE test_fsst_wide;

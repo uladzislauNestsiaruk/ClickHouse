@@ -361,6 +361,9 @@ void SerializationStringFSST::serializeBinaryBulkWithMultipleStreams(
     auto serialize_state = std::static_pointer_cast<SerializeFSSTState<false>>(state);
     std::vector<decltype(serialize_state)> states_to_serialize;
 
+    serialize_state->chars.clear();
+    serialize_state->offsets.clear();
+
     for (size_t ind = offset; ind < offset + limit; ind++)
     {
         size_t start_offset = ind == 0 ? 0 : column->getOffsets()[ind - 1];
@@ -417,9 +420,11 @@ void SerializationStringFSST::serializeBinaryBulkWithMultipleStreams(
 
         if (state_size >= kCompressSize)
         {
-            state_size = 0;
+            auto prev_decoder = serialize_state->decoder;
             states_to_serialize.emplace_back(serialize_state);
             serialize_state = std::make_shared<SerializeFSSTState<true>>();
+            serialize_state->decoder = prev_decoder;
+            state_size = 0;
         }
     }
 
@@ -436,10 +441,6 @@ void SerializationStringFSST::serializeBinaryBulkWithMultipleStreams(
     limit = limit == 0 || limit + offset > column.size() ? column.size() - offset : limit;
     if (limit == 0)
     {
-        /// Order must match serializeStates: FsstOffsets, Fsst, FsstCompressed.
-        /// This is critical for compact parts with substream marks, where
-        /// initColumnsSubstreamsIfNeeded calls this with 0 rows to determine
-        /// substream positions that must match the actual mark write order.
         settings.path.push_back(Substream::FsstOffsets);
         settings.getter(settings.path);
         settings.path.back() = Substream::Fsst;

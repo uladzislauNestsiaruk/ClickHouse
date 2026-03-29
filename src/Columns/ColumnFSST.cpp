@@ -610,7 +610,8 @@ ColumnPtr ColumnFSST::replicate(const Offsets & offsets) const
         }
 
 
-        for (size_t ind = 0; ind < offsets[row]; ind++)
+        size_t prev = (row == 0 ? 0 : offsets[row - 1]);
+        for (size_t ind = 0; ind < offsets[row] - prev; ind++)
             replicated_origin_lengths.emplace_back(origin_lengths[row]);
     }
 

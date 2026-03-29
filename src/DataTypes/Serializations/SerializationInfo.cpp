@@ -369,7 +369,8 @@ void SerializationInfo::fromJSON(const Poco::JSON::Object & object)
 bool useFSST(const SerializationInfo::Data & data, const SerializationInfo::Settings & settings)
 {
     double ratio = data.num_rows ? std::min(static_cast<double>(data.num_defaults) / static_cast<double>(data.num_rows), 1.0) : 0.0;
-    return data.is_string_column && ratio <= settings.ratio_of_defaults_for_sparse
+    return settings.allow_fsst_serialization
+        && data.is_string_column && ratio <= settings.ratio_of_defaults_for_sparse
         && data.avgStringLength() >= settings.min_avg_string_length_for_fsst && data.total_string_bytes >= settings.min_total_bytes_for_fsst
         && data.fsst_compression_ratio < settings.max_fsst_compression_ratio;
 }

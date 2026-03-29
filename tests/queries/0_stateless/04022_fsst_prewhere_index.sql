@@ -6,7 +6,7 @@ SET optimize_functions_to_subcolumns = 0;
 -- Part 1: PREWHERE.
 DROP TABLE IF EXISTS test_fsst_pw;
 CREATE TABLE test_fsst_pw (id UInt64, category String, payload String) ENGINE = MergeTree ORDER BY id
-SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
+SETTINGS allow_fsst_serialization = 1, min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
 
 INSERT INTO test_fsst_pw SELECT number, concat('category_group_', toString(number % 20)),
     concat('Detailed payload data for item #', toString(number), ': status=active, priority=', toString(number % 5), ', description=', repeat('lorem ipsum dolor sit amet ', 3))
@@ -21,7 +21,7 @@ DROP TABLE test_fsst_pw;
 -- Part 2: String in primary key.
 DROP TABLE IF EXISTS test_fsst_pk;
 CREATE TABLE test_fsst_pk (tenant String, event_type String, ts UInt64, data String) ENGINE = MergeTree ORDER BY (tenant, event_type, ts)
-SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
+SETTINGS allow_fsst_serialization = 1, min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
 
 INSERT INTO test_fsst_pk SELECT concat('tenant_', toString(number % 10), '_longname'), concat('event_', toString(number % 5), '_type_name'), number,
     concat('Event data payload #', toString(number), ' with context: ', repeat('key=value ', 10))
@@ -41,7 +41,7 @@ CREATE TABLE test_fsst_idx (id UInt64, tag String, message String,
     INDEX idx_msg_bloom message TYPE bloom_filter(0.01) GRANULARITY 2,
     INDEX idx_tag_minmax tag TYPE minmax GRANULARITY 2)
 ENGINE = MergeTree ORDER BY id
-SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0, index_granularity = 256;
+SETTINGS allow_fsst_serialization = 1, min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0, index_granularity = 256;
 
 INSERT INTO test_fsst_idx SELECT number, concat('tag_value_', toString(number % 50)),
     concat('System alert: component=', toString(number % 30), ' severity=', if(number % 3 = 0, 'CRITICAL', if(number % 3 = 1, 'WARNING', 'INFO')), ' host=server-', toString(number % 100), '.prod.internal')

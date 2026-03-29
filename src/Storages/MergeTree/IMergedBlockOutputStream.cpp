@@ -15,6 +15,7 @@ namespace MergeTreeSetting
     extern const MergeTreeSettingsMergeTreeNullableSerializationVersion nullable_serialization_version;
     extern const MergeTreeSettingsBool propagate_types_serialization_versions_to_nested_types;
     extern const MergeTreeSettingsMergeTreeMapSerializationVersion map_serialization_version;
+    extern const MergeTreeSettingsBool allow_fsst_serialization;
 }
 
 IMergedBlockOutputStream::IMergedBlockOutputStream(
@@ -39,6 +40,7 @@ IMergedBlockOutputStream::IMergedBlockOutputStream(
     }
     , new_serialization_infos(info_settings)
 {
+    info_settings.allow_fsst_serialization = (*storage_settings)[MergeTreeSetting::allow_fsst_serialization];
     if (reset_columns)
         new_serialization_infos = SerializationInfoByName(columns_list, info_settings);
 }

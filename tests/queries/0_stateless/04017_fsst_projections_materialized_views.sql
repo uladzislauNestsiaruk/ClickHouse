@@ -4,7 +4,7 @@
 -- Part 1: Projections.
 DROP TABLE IF EXISTS test_fsst_proj;
 CREATE TABLE test_fsst_proj (id UInt64, category String, message String) ENGINE = MergeTree ORDER BY id
-SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
+SETTINGS allow_fsst_serialization = 1, min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
 
 ALTER TABLE test_fsst_proj ADD PROJECTION proj_by_category (SELECT id, category, message ORDER BY category);
 
@@ -25,10 +25,10 @@ DROP TABLE IF EXISTS test_fsst_mv_source;
 DROP TABLE IF EXISTS test_fsst_mv_target;
 
 CREATE TABLE test_fsst_mv_source (category String, id UInt64, message String) ENGINE = MergeTree ORDER BY id
-SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
+SETTINGS allow_fsst_serialization = 1, min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
 
 CREATE TABLE test_fsst_mv_target (category String, msg_count UInt64, sample_msg String) ENGINE = MergeTree ORDER BY category
-SETTINGS min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
+SETTINGS allow_fsst_serialization = 1, min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
 
 CREATE MATERIALIZED VIEW test_fsst_mv TO test_fsst_mv_target AS
 SELECT category, count() AS msg_count, any(message) AS sample_msg FROM test_fsst_mv_source GROUP BY category;

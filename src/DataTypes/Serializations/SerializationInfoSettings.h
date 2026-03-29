@@ -19,6 +19,7 @@ struct SerializationInfoSettings
     /// Maximum trial compression ratio to accept FSST (lower = better compression).
     /// 0.85 means FSST must achieve at least 15% compression on a sample to be used.
     double max_fsst_compression_ratio = 0.85;
+    bool allow_fsst_serialization = false;
 
     MergeTreeSerializationInfoVersion version = MergeTreeSerializationInfoVersion::BASIC;
     MergeTreeStringSerializationVersion string_serialization_version = MergeTreeStringSerializationVersion::SINGLE_STREAM;

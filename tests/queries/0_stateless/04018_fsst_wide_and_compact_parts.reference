@@ -9,5 +9,5 @@ wide_count	2000
 wide_sample	Wide part message #42 with repeated padding: wide_format_data wide_format_data wide_format_data wide_format_data wide_format_data 
 all_1_1_0	1	
 wide_merged_count	4000
-wide_merged_sample	Wide part 2 message #2874 with different padding: second_part_data second_part_data second_part_data second_part_data second_part_data 
+wide_merged_integrity	4000
 all_1_2_1	1	
