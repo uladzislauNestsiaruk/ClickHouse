@@ -236,11 +236,11 @@ void ColumnFSST::decompressIfNeeded()
     decompressed_start_index = 0;
 }
 
-#if !defined(DEBUG_OR_SANITIZER_BUILD)
+#    if !defined(DEBUG_OR_SANITIZER_BUILD)
 void ColumnFSST::insertRangeFrom(const IColumn & src, size_t start, size_t length)
-#else
+#    else
 void ColumnFSST::doInsertRangeFrom(const IColumn & src, size_t start, size_t length)
-#endif
+#    endif
 {
     if (src.size() < start + length)
         throw Exception(ErrorCodes::PARAMETER_OUT_OF_BOUND, "Parameter out of bound in ColumnFSST::insertRangeFrom method.");
@@ -284,11 +284,11 @@ void ColumnFSST::doInsertRangeFrom(const IColumn & src, size_t start, size_t len
     }
 }
 
-#if !defined(DEBUG_OR_SANITIZER_BUILD)
+#    if !defined(DEBUG_OR_SANITIZER_BUILD)
 int ColumnFSST::compareAt(size_t n, size_t m, const IColumn & rhs, int nan_direction_hint) const
-#else
+#    else
 int ColumnFSST::doCompareAt(size_t n, size_t m, const IColumn & rhs, int nan_direction_hint) const
-#endif
+#    endif
 {
     /// If both sides are in uncompressed regions, delegate directly.
     if (isFullyDecompressed())
@@ -555,10 +555,9 @@ void ColumnFSST::updatePermutation(
 
 void ColumnFSST::getExtremes(Field & min, Field & max, size_t start, size_t end) const
 {
-    if (start >= end) {
+    if (start >= end)
         return;
-    }
-    
+
     if (isFullyDecompressed())
     {
         string_column->getExtremes(min, max, start, end);

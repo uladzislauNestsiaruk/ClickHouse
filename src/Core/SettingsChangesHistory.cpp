@@ -1116,6 +1116,9 @@ const VersionToSettingsChangesMap & getMergeTreeSettingsChangesHistory()
             {"allow_commit_order_projection", false, false, "New setting"},
             {"replicated_fetches_min_part_level", 0, 0, "New setting"},
             {"replicated_fetches_min_part_level_timeout_seconds", 300, 300, "New setting"},
+            {"min_avg_string_length_for_fsst_serialization", 8.0, 8.0, "New setting"},
+            {"min_total_bytes_for_fsst_serialization", 16384, 16384, "New setting"},
+            {"max_fsst_compression_ratio", 0.85, 0.85, "New setting"},
         });
         addSettingsChanges(merge_tree_settings_changes_history, "26.3",
         {
