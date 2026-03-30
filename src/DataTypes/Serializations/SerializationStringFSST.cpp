@@ -394,6 +394,8 @@ void SerializationStringFSST::serializeBinaryBulkWithMultipleStreams(
 {
     state = state ? state : std::make_shared<SerializeFSSTState<true>>();
     auto serialize_state = std::static_pointer_cast<SerializeFSSTState<true>>(state);
+    serialize_state->compressed_data.clear();
+    serialize_state->origin_lengths.clear();
     std::vector<decltype(serialize_state)> states_to_serialize;
 
     size_t state_size = 0;

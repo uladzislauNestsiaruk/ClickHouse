@@ -36,10 +36,9 @@ std::optional<size_t> ColumnFSST::batchByRow(size_t row) const
         return std::nullopt;
     }
 
-    size_t batch_ind
-        = --std::lower_bound(
-              decoders.begin(), decoders.end(), row, [](const BatchDsc & dsc, size_t value) { return dsc.batch_start_index <= value; })
-        - decoders.begin();
+    auto it = std::upper_bound(
+        decoders.begin(), decoders.end(), row, [](size_t value, const BatchDsc & dsc) { return value < dsc.batch_start_index; });
+    size_t batch_ind = it == decoders.begin() ? 0 : static_cast<size_t>(--it - decoders.begin());
 
     return batch_ind;
 }
@@ -260,9 +259,8 @@ void ColumnFSST::doInsertRangeFrom(const IColumn & src, size_t start, size_t len
                && src_fsst->decoders[first_batch_to_insert].batch_start_index < start + length)
         {
             decoders.emplace_back(src_fsst->decoders[first_batch_to_insert]);
-            size_t src_offset = src_fsst->decoders[first_batch_to_insert].batch_start_index < start
-                ? 0
-                : src_fsst->decoders[first_batch_to_insert].batch_start_index - start;
+            size_t src_batch_start = src_fsst->decoders[first_batch_to_insert].batch_start_index;
+            size_t src_offset = (src_batch_start > start) ? (src_batch_start - start) : 0;
             decoders.back().batch_start_index = length_before_insert + src_offset;
             ++first_batch_to_insert;
         }

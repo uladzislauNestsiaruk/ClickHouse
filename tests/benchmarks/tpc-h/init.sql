@@ -17,13 +17,15 @@ CREATE TABLE nation (
     n_name       FixedString(25),
     n_regionkey  UInt32,
     n_comment    String)
-PRIMARY KEY (n_nationkey);
+PRIMARY KEY (n_nationkey)
+SETTINGS allow_fsst_serialization = 1;
 
 CREATE TABLE region (
     r_regionkey  UInt32,
     r_name       FixedString(25),
     r_comment    String)
-PRIMARY KEY (r_regionkey);
+PRIMARY KEY (r_regionkey)
+SETTINGS allow_fsst_serialization = 1;
 
 CREATE TABLE part (
     p_partkey     UInt32,
@@ -35,7 +37,8 @@ CREATE TABLE part (
     p_container   FixedString(10),
     p_retailprice Decimal(12,2),
     p_comment     String)
-PRIMARY KEY (p_partkey);
+PRIMARY KEY (p_partkey)
+SETTINGS allow_fsst_serialization = 1;
 
 CREATE TABLE supplier (
     s_suppkey     UInt32,
@@ -45,7 +48,8 @@ CREATE TABLE supplier (
     s_phone       FixedString(15),
     s_acctbal     Decimal(12,2),
     s_comment     String)
-PRIMARY KEY (s_suppkey);
+PRIMARY KEY (s_suppkey)
+SETTINGS allow_fsst_serialization = 1;
 
 CREATE TABLE partsupp (
     ps_partkey     UInt32,
@@ -53,7 +57,8 @@ CREATE TABLE partsupp (
     ps_availqty    Int32,
     ps_supplycost  Decimal(12,2),
     ps_comment     String)
-PRIMARY KEY (ps_partkey, ps_suppkey);
+PRIMARY KEY (ps_partkey, ps_suppkey)
+SETTINGS allow_fsst_serialization = 1;
 
 CREATE TABLE customer (
     c_custkey     UInt32,
@@ -64,7 +69,8 @@ CREATE TABLE customer (
     c_acctbal     Decimal(12,2),
     c_mktsegment  FixedString(10),
     c_comment     String)
-PRIMARY KEY (c_custkey);
+PRIMARY KEY (c_custkey)
+SETTINGS allow_fsst_serialization = 1;
 
 CREATE TABLE orders (
     o_orderkey       UInt32,
@@ -76,7 +82,8 @@ CREATE TABLE orders (
     o_clerk          FixedString(15),
     o_shippriority   Int32,
     o_comment        String)
-PRIMARY KEY (o_orderkey);
+PRIMARY KEY (o_orderkey)
+SETTINGS allow_fsst_serialization = 1;
 
 CREATE TABLE lineitem (
     l_orderkey    UInt32,
@@ -95,4 +102,5 @@ CREATE TABLE lineitem (
     l_shipinstruct  FixedString(25),
     l_shipmode      FixedString(10),
     l_comment       String)
-PRIMARY KEY (l_orderkey, l_linenumber);
+PRIMARY KEY (l_orderkey, l_linenumber)
+SETTINGS allow_fsst_serialization = 1;
