@@ -43,6 +43,12 @@ MergeSorter::MergeSorter(SharedHeader header, Chunks chunks_, SortDescription & 
         /// Convert to full column, because some cursors expect non-contant columns
         convertToFullIfConst(chunk);
 
+#ifdef ENABLE_FSST
+        /// Convert FSST-compressed columns to full, because JIT sort comparator
+        /// expects ColumnString, not ColumnFSST.
+        convertToFullIfFSST(chunk);
+#endif
+
         size_t num_rows = chunk.getNumRows();
         auto columns = chunk.detachColumns();
         /// We don't support sorting by replicated columns for now,
