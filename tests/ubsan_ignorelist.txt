@@ -17,6 +17,9 @@
 src:*/Functions/pointInPolygon.cpp
 src:*/contrib/boost/boost/geometry/*
 
+# FSST library uses intentional unaligned memory access in decompression for performance
+src:*/contrib/fsst/*
+
 # We don't want to receive sanitizer alerts from third-party libraries during fuzzing
 src:*/contrib/contrib/protobuf/*
 src:*/contrib/libprotobuf-mutator/*

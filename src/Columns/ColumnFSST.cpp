@@ -12,6 +12,7 @@
 #    include <Columns/ColumnsCommon.h>
 #    include <Columns/ColumnsNumber.h>
 #    include <Core/Field.h>
+#    include <base/sanitizer_defs.h>
 #    include <base/types.h>
 #    include <Common/Exception.h>
 #    include <Common/HashTable/Hash.h>
@@ -133,7 +134,7 @@ void ColumnFSST::popBack(size_t n)
     decompressed_cache = nullptr;
 }
 
-MutableColumnPtr ColumnFSST::decompressAll() const
+NO_SANITIZE_UNDEFINED MutableColumnPtr ColumnFSST::decompressAll() const
 {
     const size_t n = size();
     if (n == 0)
