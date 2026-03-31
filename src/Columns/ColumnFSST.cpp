@@ -7,7 +7,10 @@
 #    include <utility>
 #    include <vector>
 
+#    include <Columns/ColumnArray.h>
 #    include <Columns/ColumnFSST.h>
+#    include <Columns/ColumnMap.h>
+#    include <Columns/ColumnNullable.h>
 #    include <Columns/ColumnTuple.h>
 #    include <Columns/ColumnsCommon.h>
 #    include <Columns/ColumnsNumber.h>
@@ -676,15 +679,47 @@ ColumnPtr recursiveRemoveFSST(const ColumnPtr & column)
         return column;
 
     if (const auto * column_fsst = typeid_cast<const ColumnFSST *>(column.get()))
+    {
         return column_fsst->convertToFullIfNeeded();
+    }
+    else if (const auto * column_nullable = typeid_cast<const ColumnNullable *>(column.get()))
+    {
+        auto nested = recursiveRemoveFSST(column_nullable->getNestedColumnPtr());
+        if (nested.get() == column_nullable->getNestedColumnPtr().get())
+            return column;
+        return ColumnNullable::create(nested, column_nullable->getNullMapColumnPtr());
+    }
+    else if (const auto * column_array = typeid_cast<const ColumnArray *>(column.get()))
+    {
+        auto data = recursiveRemoveFSST(column_array->getDataPtr());
+        if (data.get() == column_array->getDataPtr().get())
+            return column;
+        return ColumnArray::create(data, column_array->getOffsetsPtr());
+    }
+    else if (const auto * column_map = typeid_cast<const ColumnMap *>(column.get()))
+    {
+        auto nested = recursiveRemoveFSST(column_map->getNestedColumnPtr());
+        if (nested.get() == column_map->getNestedColumnPtr().get())
+            return column;
+        return ColumnMap::create(nested);
+    }
     else if (const auto * column_tuple = typeid_cast<const ColumnTuple *>(column.get()))
     {
         auto columns = column_tuple->getColumns();
         if (columns.empty())
             return column;
 
+        bool changed = false;
         for (auto & element : columns)
-            element = recursiveRemoveFSST(element);
+        {
+            auto new_element = recursiveRemoveFSST(element);
+            if (new_element.get() != element.get())
+                changed = true;
+            element = std::move(new_element);
+        }
+
+        if (!changed)
+            return column;
 
         return ColumnTuple::create(columns);
     }

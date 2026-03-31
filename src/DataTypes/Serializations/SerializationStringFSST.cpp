@@ -208,6 +208,7 @@ void serializeStates(std::vector<std::shared_ptr<SerializeFSSTState<false>>> sta
         total_size_after_compression[state_ind] = compressed_data_pointers[compressed_strings - 1] - compressed_data_pointers[0]
             + compressed_data_lengths[compressed_strings - 1];
 
+        memset(&decoders[state_ind], 0, sizeof(decoders[state_ind]));
         decoders[state_ind] = fsst_decoder(fsst_encoder);
         fsst_destroy(fsst_encoder);
     };
