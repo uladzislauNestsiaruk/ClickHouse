@@ -1,7 +1,6 @@
 <test>
 <settings>
     <max_memory_usage>30000000000</max_memory_usage>
-    <allow_fsst_serialization>1</allow_fsst_serialization>
 </settings>
 
 <substitutions>

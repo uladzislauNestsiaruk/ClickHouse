@@ -1,6 +1,5 @@
 {
     "settings": {
-        "join_use_nulls": 1,
-        "allow_fsst_serialization" : 1
+        "join_use_nulls": 1
     }
 }
