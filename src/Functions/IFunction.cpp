@@ -515,7 +515,7 @@ ColumnPtr IExecutableFunction::execute(
             nested_columns = std::move(res.compact_indexed_columns);
         }
 
-        size_t nested_column_size = nested_columns.empty() ? 0 : nested_columns[0]->size();
+        nested_column_size = nested_columns.empty() ? 0 : nested_columns[0]->size();
         size_t col_idx = 0;
         for (auto & argument : arguments_without_replicated)
         {

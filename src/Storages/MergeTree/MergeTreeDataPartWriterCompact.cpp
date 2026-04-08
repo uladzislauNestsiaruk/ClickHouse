@@ -281,10 +281,8 @@ void MergeTreeDataPartWriterCompact::writeDataBlock(const Block & block, const G
             /// So we flush each stream (using next()) before using new one, because otherwise we will override
             /// data in result file.
             CompressedStreamPtr prev_stream;
-            size_t getter_call_count = 0;
             auto stream_getter = [&, this](const ISerialization::SubstreamPath & substream_path) -> WriteBuffer *
             {
-                ++getter_call_count;
                 String stream_name = ISerialization::getFileNameForStream(*name_and_type, substream_path, ISerialization::StreamFileNameSettings(*storage_settings));
 
                 auto stream_it = compressed_streams.find(stream_name);
