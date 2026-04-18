@@ -34,7 +34,7 @@ private:
     }
 
 public:
-    constexpr static size_t kCompressSize = 16 << 10; // 16KB
+    constexpr static size_t kCompressSize = 4 * (1 << 20); // 4MB
 
     static UInt128 getHash(const SerializationPtr & nested);
     static SerializationPtr create(const SerializationPtr & nested);

@@ -65,7 +65,7 @@ void fsstSampleAndCompress(const IColumn & column, SerializationInfo::Data & dat
         return;
 
     /* sample */
-    static constexpr size_t kMaxSampleStrings = 512;
+    static constexpr size_t kMaxSampleStrings = 256;
     size_t step = std::max<size_t>(1, rows / kMaxSampleStrings);
 
     std::vector<const unsigned char *> sample_ptrs;

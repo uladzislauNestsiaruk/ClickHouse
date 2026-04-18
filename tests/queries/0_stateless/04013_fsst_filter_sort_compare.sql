@@ -5,7 +5,7 @@ SET allow_experimental_parallel_reading_from_replicas = 0;
 
 DROP TABLE IF EXISTS test_fsst_fsc;
 CREATE TABLE test_fsst_fsc (id UInt64, category String, message String) ENGINE = MergeTree ORDER BY id
-SETTINGS allow_fsst_serialization = 1, min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 1.0;
+SETTINGS allow_fsst_serialization = 1, min_avg_string_length_for_fsst_serialization = 8.0, min_total_bytes_for_fsst_serialization = 16384, max_fsst_compression_ratio = 2.0;
 
 INSERT INTO test_fsst_fsc SELECT number, concat('category_', toString(number % 5)), concat('Error in module ', toString(number % 20), ': timeout after ', toString(number * 7 % 10000), 'ms waiting for response from backend-', toString(number % 8), '.internal.corp') FROM numbers(5000);
 
