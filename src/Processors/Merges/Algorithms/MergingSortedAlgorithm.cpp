@@ -113,6 +113,12 @@ void MergingSortedAlgorithm::initialize(Inputs inputs)
 
 void MergingSortedAlgorithm::consume(Input & input, size_t source_num)
 {
+    if (isVirtualRow(input.chunk))
+    {
+        setVirtualRow(input.chunk, *header, apply_virtual_row_conversions);
+        input.skip_last_row = true;
+    }
+
     removeReplicatedFromSortingColumns(header, input, description);
     removeConstAndSparse(input);
 #ifdef ENABLE_FSST
